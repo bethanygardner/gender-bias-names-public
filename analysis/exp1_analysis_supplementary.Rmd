@@ -1,0 +1,259 @@
+---
+title: 'Experiment 1: Supplementary Analyses'
+author: "Bethany Gardner"
+date: "3/29/2022"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 3
+  pdf_document:
+    toc: true
+    toc_depth: 3
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(magrittr)
+library(tidyr)
+library(dplyr)
+options(dplyr.summarise.inform = FALSE)
+library(lme4)
+library(lmerTest)
+library(buildmer)
+```
+
+# Setup
+
+Load data and select columns used in model. See data/exp1_data_about.txt
+for more details.
+
+```{r}
+d <- read.csv("../data/exp1_data.csv", stringsAsFactors=TRUE) %>%
+  rename("Participant"="SubjID", "Item"="NameShown") %>%
+  select(Participant, SubjGender, Condition, GenderRating, Item, He, She, Other)
+
+str(d)
+```
+
+Center gender rating for names: Original scale from 1 to 7, with 1 as
+most masculine and 7 as most feminine. Mean-centered with higher still
+as more feminine.
+
+```{r}
+d %<>% mutate(GenderRatingCentered=scale(d$GenderRating, scale=FALSE))
+```
+
+Set contrasts for name conditions.
+
+```{r}
+contrasts(d$Condition) = cbind("last vs first/full"=c(.33,.33,-0.66), 
+                               "first vs full"=c(-.5,.5,0))
+contrasts(d$Condition)
+```
+
+Subset for gender rating effects (First and Full conditions only).
+
+```{r}
+d.FF <- d %>% filter(Condition!="last") 
+d.FF$Condition <- droplevels(d.FF$Condition)
+contrasts(d.FF$Condition) = cbind("first vs full"=c(-.5,.5)) #add contrast back
+contrasts(d.FF$Condition)
+```
+
+# Without OTHER responses
+
+The first supplementary analysis tests if excluding OTHER responses
+(7.12% of total responses) affects the pattern of results.
+
+```{r}
+o <- sum(d$Other) 
+o
+o/length(d$Other) 
+```
+
+Exclude OTHER responses.
+
+```{r}
+d.heshe <- d %>% filter(Other==0)
+
+d.FF.heshe <- d.FF %>% filter(Other==0)
+```
+
+## Model 1: Condition w/o OTHER
+
+Effect of Name Condition (first name, last name, full name) on
+likelihood of a SHE response, as opposed to a HE response, with OTHER
+responses excluded. Participant and Item are again included as random
+intercepts, with items defined as the unique first, last and first +
+last name combinations.
+
+```{r}
+m.cond_other <- glmer(She ~ Condition + (1|Participant) + (1|Item), 
+                data=d.heshe, family=binomial)
+summary(m.cond_other)
+```
+
+No differences in results.
+
+## Model 2: Condition \* Name Gender w/o OTHER
+
+Effects of Name Condition (first name, full name) and the first name's
+Gender Rating (centered, positive=more feminine) on the likelihood of a
+SHE response as opposed to a HE response, with OTHER responses excluded.
+In Experiment 1, the Last Name condition does not include any instances
+of the gendered first name, so it is not included here. Participant and
+Item are again included as random intercepts.
+
+```{r}
+m_namegender_other <- glmer(She ~ Condition * GenderRatingCentered + 
+                            (1|Participant) + (1|Item), 
+                            data=d.FF.heshe, family=binomial)
+summary(m_namegender_other)
+```
+
+Compared to the main analysis including OTHER responses, the intercept
+is trending instead of significant, the gender rating effect the same,
+and the small First vs Full effect is no longer significant.
+
+# Quadratic Name Gender Rating
+
+The second supplementary analysis tested the effect of squared name
+gender rating, such that larger values meant names with stronger gender
+associations (masc or fem), and smaller values meant names with weaker
+gender associations.
+
+```{r}
+d.FF %<>% mutate(GenderRatingSquared=GenderRatingCentered^2)
+```
+
+## Model 3: Quadratic
+
+No quadratic effects.
+
+```{r}
+m_namegender_squared <- glmer(She ~ Condition*GenderRatingCentered + 
+                              Condition*GenderRatingSquared +
+                              (1|Participant) + (1|Item), 
+                              d.FF, family="binomial")
+summary(m_namegender_squared)
+```
+
+# Participant Gender
+
+## Setup/Data Summary
+
+The third supplementary analysis looks at participant gender: if male
+participants show a larger bias towards HE responses than non-male
+participants.
+
+Participants entered their gender in a free-response box.
+
+```{r}
+d %>% group_by(SubjGender) %>% 
+  summarise(total=n_distinct(Participant))
+```
+
+For this analysis, we exclude participants who did not respond. Because
+there are not enough participants to create 3 groups, we compare male to
+non-male participants.
+
+```{r}
+d.gender <- d %>% filter(SubjGender != "N/A") %>%
+            mutate(SubjGenderMale=(ifelse(SubjGender=="male", 1, 0)))
+
+d.gender %>% group_by(SubjGenderMale) %>% 
+  summarise(total=n_distinct(Participant))
+```
+
+Summary of responses by condition and participant gender.
+
+```{r}
+d.gender %<>% mutate(ResponseAll=case_when(
+              He==1 ~ "He",
+              She==1 ~ "She", 
+              Other==1 ~ "Other"))
+
+d.gender.count_responses <- d.gender %>% 
+  group_by(Condition, ResponseAll, SubjGenderMale) %>%
+  summarise(n=n()) %>%
+  pivot_wider(names_from=c(ResponseAll),
+              values_from=n) %>%
+  mutate(She_HeOther = She / (He+Other),
+         She_He = She / He) %>%
+  rename("ParticipantGender"="SubjGenderMale") 
+d.gender.count_responses$ParticipantGender %<>% recode("0"="Non-male", "1"="Male")
+
+print(d.gender.count_responses)
+```
+
+Participant gender is mean centered effects coded, comparing non-male
+participants to male participants.
+
+```{r}
+d.gender$SubjGenderMale %<>% as.factor()
+contrasts(d.gender$SubjGenderMale)=cbind("NM_M"=c(-.5,.5)) 
+contrasts(d.gender$SubjGenderMale)
+```
+
+Subset First and Full conditions.
+
+```{r}
+d.FF.gender <- d.gender %>% filter(Condition!="last")
+d.FF.gender$Condition <- droplevels(d.FF.gender$Condition)
+contrasts(d.FF.gender$Condition) = 
+  cbind("first vs full"=c(-.5,.5)) #add contrast back
+contrasts(d.FF.gender$Condition)
+```
+
+## Model 4: Condition \* Participant Gender
+
+Effect of Name Condition (first name, last name, full name) and
+Participant Gender (non-male vs male) on likelihood of a SHE response,
+as opposed to a HE response or OTHER response. Participant and Item are
+again included as random intercepts.
+
+```{r}
+m_cond_subjgender <- glmer(She ~ Condition * SubjGenderMale + 
+            (1|Participant) + (1|Item), 
+            data=d.gender, family=binomial)
+summary(m_cond_subjgender)
+```
+
+Male participants are less likely to respond SHE overall than non-male
+participants, but this is not significant after correcting for multiple
+comparisons. Neither interaction with Condition is significant.
+
+## Model 5: Condition \* Name Gender \* Participant Gender
+
+Effects of Name Condition (first name, full name), the first name's
+Gender Rating (centered, positive=more feminine), and Participant Gender
+(non-male vs. male) on the likelihood of a SHE response as opposed to a
+HE or OTHER responses. In Experiment 1, the Last Name condition does not
+include any instances of the gendered first name, so it is not included
+here. The model with random intercepts does not converge with glmer, but
+does when using buildmer to find the maximal model (?).
+
+```{r}
+m_cond_name_subjgender <- buildmer(formula=
+            (She ~ Condition * GenderRatingCentered * SubjGenderMale + 
+            (1|Participant) + (1|Item)), 
+            data=d.FF.gender, family=binomial, direction=c("order"))
+summary(m_cond_name_subjgender)
+```
+
+-   Participant Gender: n.s.
+
+-   Condition (First vs Full) \* Participant Gender: There is a larger
+    difference between the First and Full Name conditions for male
+    participants (see means above), but this is n.s. after correcting
+    for multiple comparisons.
+
+-   Name Gender \* Participant Gender: There is a stronger effect of the
+    first name gender rating for male participants, but this is n.s.
+    after correction for multiple comparisons.
+
+-   Condition (First vs Full) \* Name Gender \* Participant Gender:
+    trending

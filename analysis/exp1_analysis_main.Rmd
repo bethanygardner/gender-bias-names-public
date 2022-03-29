@@ -1,0 +1,119 @@
+---
+title: 'Experiment 1: Main Analyses'
+author: "Bethany Gardner"
+date: "3/29/2022"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 3
+  pdf_document:
+    toc: true
+    toc_depth: 3
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(magrittr)
+library(tidyr)
+library(dplyr)
+options(dplyr.summarise.inform = FALSE)
+library(lme4)
+library(lmerTest)
+```
+
+# Setup
+
+Load data and select columns used in model. See data/exp1_data_about.txt
+for more details.
+
+```{r}
+d <- read.csv("../data/exp1_data.csv", stringsAsFactors=TRUE) %>%
+  rename("Participant"="SubjID", "Item"="NameShown") %>%
+  select(Participant, Condition, GenderRating, Item, He, She, Other)
+str(d)
+```
+
+Center gender rating for names: Original scale from 1 to 7, with 1 as
+most masculine and 7 as most feminine. Mean-centered with higher still
+as more feminine.
+```{r}
+d %<>% mutate(GenderRatingCentered=scale(d$GenderRating, scale=FALSE))
+```
+
+Set contrasts for name conditions.
+```{r}
+contrasts(d$Condition) = cbind("last vs first/full"=c(.33,.33,-0.66), 
+                               "first vs full"=c(-.5,.5,0))
+contrasts(d$Condition)
+```
+
+Subset for gender rating effects (First and Full conditions only).
+```{r}
+d.FF <- d %>% filter(Condition!="last") 
+d.FF$Condition <- droplevels(d.FF$Condition)
+contrasts(d.FF$Condition) = cbind("first vs full"=c(-.5,.5)) #add contrast back
+contrasts(d.FF$Condition)
+```
+
+# Data summary
+
+Responses by condition.
+```{r}
+d %<>% mutate(ResponseAll=case_when(
+       He==1 ~ "He",
+       She==1 ~ "She", 
+       Other==1 ~ "Other"))
+
+d.count_responses <- d %>% group_by(Condition, ResponseAll) %>%
+  summarise(n=n()) %>%
+  pivot_wider(names_from=ResponseAll,
+              values_from=n) %>%
+  mutate(She_HeOther = She / (He+Other),
+         She_He = She / He)
+
+print(d.count_responses)
+```
+
+-   First name condition has second-most SHE responses
+-   Full name condition has most SHE responses
+-   Last name condition has fewest SHE responses
+
+# Model 1: Condition
+
+Effect of Name Condition (first name, last name, full name) on
+likelihood of a SHE response, as opposed to a HE or OTHER response.
+Participant and Item are included as random intercepts, with items
+defined as the unique first, last and first + last name combinations.
+Because the condition manipulations were fully between-subject and
+between-item, fitting a random slope model was not possible.
+
+```{r}
+m.cond <- glmer(She ~ Condition + (1|Participant) + (1|Item), 
+            data=d, family=binomial)
+summary(m.cond)
+```
+Fewer SHE responses overall. First+Full have more SHE responses than
+Last. Full has more SHE responses than First (n.s. but matches ratios).
+
+# Model 2: Condition \* Name Gender
+
+Effects of Name Condition (first name, full name) and the first name's
+Gender Rating (centered, positive=more feminine) on the likelihood of a
+SHE response, as opposed to a HE or OTHER response. In Experiment 1, the
+Last Name condition does not include any instances of the gendered first
+name, so it is not included here. Participant and Item are again
+included as random intercepts.
+
+```{r}
+m.namegender <- glmer(She ~ Condition * GenderRatingCentered + 
+            (1|Participant) + (1|Item), 
+            data=d.FF, family=binomial)
+summary(m.namegender)
+```
+
+More SHE responses as first names become more feminine. Difference
+between First and Full is now significant (as compared to condition-only
+model).

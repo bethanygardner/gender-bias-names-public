@@ -1,0 +1,60 @@
+Bethany Gardner, 03/08/2021
+
+The production data csv is structured as follows:
+
+'data.frame':	9564 obs. of  16 variables:
+ $ Condition   : Factor w/ 3 levels "first","full",..: 1 1 1 1 1 1 1 1 1 1 ...
+	Three conditions: first name (n=152), last name (n=153), full name (n=152)  
+
+ $ List        : int  1 1 1 1 1 1 1 1 1 1 ...
+ 	List assignment, see stimuli file on OSF
+
+ $ GenderRating: num  1.21 1.24 1.28 2.12 2.41 2.61 3.61 3.75 3.87 4.22 ...
+	Gender rating for first names, from pilot data. Participants rated each name on a scale
+	of 1-7 with 1 being most masculine and 7 being most feminine. This column is NA for the 
+	last name condition.	
+
+ $ NameShown   : Factor w/ 104 levels "Ashley","Ashley Cook",..: 64 11 43 18 95 29 88 71 79 92 ...
+	The name shown (first, last, full). There are 21 first names, 21 last names, and 3 
+    combinations of full names (-1 because of stimuli error), for a total of 104 different items.
+    
+ $ NameFirst   : Factor w/ 21 levels "Ashley","Blair",..: 14 3 9 4 21 6 19 15 17 20 ...
+	The first name (for first and full conditions). 
+
+ $ NameLast    : Factor w/ 21 levels "Baker","Bell",..: NA NA NA NA NA NA NA NA NA NA ...
+	The last name (for last and full conditions). 
+
+ $ He          : int  1 1 1 1 0 1 1 0 1 1 ...
+	1 if the response used he/him/his pronouns to refer to the named character
+
+ $ She         : int  0 0 0 0 1 0 0 1 0 0 ...
+	1 if the response used she/her/hers pronouns
+
+ $ Other       : int  0 0 0 0 0 0 0 0 0 0 ...
+	1 if the response did not use he/she pronouns
+
+ $ OtherType   : Factor w/ 5 levels "","no subject",..: 1 1 1 1 1 1 1 1 1 1 ...
+	The Other responses are coded into several categories: 
+	No subject: response has no subject, assumed to be the named character but ungrammatical
+	Other subject: response talks about another subject(s) besides or including the named character
+	Repeat name: response avoids using gendered pronouns by repeating the name
+	Singular They: response uses they/them/theirs to refer to the named character
+
+ $ Response    : chr  "he ate breakfast." "he went to bed." "he watched a movie." "he started dancing."
+	Original response text
+
+ $ SubjID      : Factor w/ 457 levels "R_0OqPxz8j70ILfnb",..: 86 86 86 86 86 86 86 86 86 86 ...
+	Participant ID
+
+ $ SubjGender  : Factor w/ 5 levels "female","genderfluid",..: 1 1 1 1 1 1 1 1 1 1 ...
+	Participant demographics. "N/A" are participants who did not provide a gender, generally misreading the question and 
+	writing their age instead.
+
+ $ SubjAge     : Factor w/ 7 levels "18 - 24","25 - 34",..: 2 2 2 2 2 2 2 2 2 2 ...
+	Participant demographics
+
+ $ SubjRace    : Factor w/ 17 levels "American Indian or Alaska Native",..: 8 8 8 8 8 8 8 8 8 8 ...
+ 	Participant demographics. Note that if a participants selected more than one race/ethnicity, those are separated by /
+
+ $ SubjEd      : Factor w/ 6 levels "2 year degree",..: 1 1 1 1 1 1 1 1 1 1 ...
+	Participant demographics
