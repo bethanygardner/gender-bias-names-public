@@ -1,0 +1,50 @@
+Bethany Gardner, 03/15/2021
+
+The memory data csv is structured as follows:
+
+'data.frame':	9457 obs. of  14 variables:
+ $ Condition   : Factor w/ 3 levels "first","full",..: 1 1 1 1 1 1 1 1 1 1 ...
+    Three conditions: first name, last name, full name 
+ 
+ $ List        : Factor w/ 9 levels "1A","1B","1C",..: 4 4 4 4 4 4 4 9 9 9 ...
+    List assignment, see stimuli file on OSF
+ 
+ $ GenderRating: num  5.59 4.22 2.12 6.73 3.61 4.73 1.21 6.24 4.39 2.61 ...
+    Gender rating for first names, from pilot data. Participants rated each name on a scale
+	of 1-7 with 1 being most masculine and 7 being most feminine. This column is NA for the 
+	last name condition.	
+ 
+ $ NameShown   : Factor w/ 105 levels "Ashley","Ashley Cook",..: 51 91 18 60 87 55 63 1 47 29 ...
+    The name shown (first, last, full). There are 21 first names, 21 last names, and 3
+    combinations of full names, for a total of 105 different items.
+ 
+ $ NameFirst   : Factor w/ 21 levels "Ashley","Blair",..: 11 20 4 13 19 12 14 1 10 6 ...
+    The first name (for first and full conditions). 
+    
+ $ NameLast    : Factor w/ 21 levels "Baker","Bell",..: NA NA NA NA NA NA NA NA NA NA ...
+    The last name (for last and full conditions). 
+ 
+ $ Male        : int  1 1 0 1 1 0 1 0 0 1 ...
+    1 if the response recalled the named character as male.
+    
+ $ Female      : int  0 0 1 0 0 1 0 1 1 0 ...
+    1 is the response recalled the named character as female.
+    
+ $ Other       : int  0 0 0 0 0 0 0 0 0 0 ...
+    1 if the response did not recall the named character as male or female (i.e. "it didn't say")
+
+ $ SubjID      : Factor w/ 1351 levels "R_0cxV2WlBMhDh2gN",..: 232 232 232 232
+    Participant ID
+ 
+ $ SubjGender  : Factor w/ 5 levels "female","genderqueer",..: 3 3 3 3 3 3 3 1
+    Participant demographics. "N/A" are participants who did not provide a gender, generally misreading the question and 
+	writing their age instead.
+ 
+ $ SubjAge     : Factor w/ 7 levels "18 - 24","25 - 34",..: 1 1 1 1 1 1 1 2 2 2 ...
+    Participant demographics
+    
+ $ SubjRace    : Factor w/ 17 levels "American Indian or Alaska Native",..: 10 10 10 10 10 10 10 10 10 10 ...
+    Participant demographics. Note that if a participants selected more than one race/ethnicity, those are separated by /
+
+ $ SubjEd      : Factor w/ 7 levels "2 year degree",..: 7 7 7 7 7 7 7 2 2 2 ...
+    Participant demographics
