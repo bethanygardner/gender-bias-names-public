@@ -1,0 +1,130 @@
+---
+title: "Norming Data"
+author: "Bethany Gardner"
+date: "3/30/2022"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 3
+  pdf_document:
+    toc: true
+    toc_depth: 3
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+library(tidyr)
+library(dplyr)
+library(magrittr)
+library(stringr)
+library(ggplot2)
+library(ggrepel)
+library(knitr)
+```
+
+For the norming study, 51 participants on MTurk rated 92 first names on
+a scale from 1 being "very masculine" to 7 being "very feminine." The
+masculine and feminine names were selected from the top 100 names
+according to US census data:
+
+> United States Social Security Administration. (2019). *Top names over
+> the last 100 years* [Data Set]. United States Social Security
+> Administration.
+> <https://www.ssa.gov/oact/babynames/decades/century.html>
+
+The androgynous names were selected from a list of names that were given
+at least one-third of the time to AFAB children in the US and also at
+least one-third of the time to AMAB children.
+
+> Flowers, A. (2015). *Unisex names data* [Data Set]. FiveThirtyEight.
+> <https://github.com/fivethirtyeight/data/tree/master/unisex-names>
+
+```{r}
+all_ratings <- read.csv("../data/exp0_data_norming.csv", stringsAsFactors=TRUE) %>%
+  #don't need participant demographics right now
+  select(-gender, -age, -race, -education, -english) %>% 
+  #pivot to have one row per name, not one column per name
+  pivot_longer(cols = c(-ResponseId),
+               names_to = "Name",
+               values_to = "GenderRating") 
+```
+
+Mean and SD of gender ratings for each name, sorted from most feminine
+to most masculine.
+
+```{r}
+mean_ratings <- all_ratings %>% group_by(Name) %>%
+  summarise(MeanGenderRating=mean(GenderRating),
+            SD=sd(GenderRating)) %>%
+  arrange(desc(MeanGenderRating))
+
+kable(mean_ratings)
+```
+
+Selected 21 names from these results, with 3 names around each of the 7
+intervals.
+
+```{r}
+names_used <- mean_ratings %>% filter(str_detect(Name, 
+  "Matthew|Brian|James|Chris|Tommie|Emerson|Stevie|Quinn|Reese|Taylor|Riley|Jessie|Kerry|Blair|Jackie|Jody|Elisha|Ashley|Mary|Rebecca|Emily")) %>%
+  filter(Name!="Christopher")
+
+kable(names_used, digits=2)
+```
+
+To check to see if the norming data were biased to call names more
+masculine, I compared them to the US census data for gender assigned at
+birth.
+
+> United States Social Security Administration. (2020). *Beyond the top
+> 1000 names* [Data Set]. United States Social Security Administration.
+> <https://www.ssa.gov/oact/babynames/limits.html>
+
+The norming study is on a scale from 1-7, and the census scale is
+probability 0-1. To try to compare this, I first subtracted 1 from the
+norming data, to put it on a scale from 0-6. Then, I divided by six, to
+put it on a scale from 0-1.
+
+```{r}
+census <- read.csv("../data/exp0_data_census.csv")
+
+names_used <- left_join(names_used, census, by="Name") %>%
+  mutate(MeanGenderRating06=MeanGenderRating-1,
+  Norming_ProbFemale = MeanGenderRating06 / 6,
+  Diff_ProbFemale = Census_ProbFemale - Norming_ProbFemale)
+```
+
+A few of the androgynous names have bigger discrepancies, likely because
+their gender associations have been changing over time. Overall, though,
+the mean difference is close to 0, and not all of the differences
+involve the norming data over-estimating the masculinity of a name.
+
+```{r}
+summary(names_used$Diff_ProbFemale)
+```
+
+Calculate the correlation:
+
+```{r}
+cor.test(names_used$Norming_ProbFemale, names_used$Census_ProbFemale)
+```
+
+And visualize it:
+
+```{r}
+plot_correlation <- ggplot(names_used, aes(x=Norming_ProbFemale, y=Census_ProbFemale,
+                          color=Name, label=Name)) +
+  geom_point(size=2.5, show.legend=FALSE) +
+  geom_smooth(method=lm, color="darkgrey", fill="darkgrey", 
+              se=FALSE, show.legend=FALSE) +
+  geom_text_repel(show.legend=FALSE) +
+  coord_cartesian(xlim=c(-.05,1.05), ylim=c(-.05, 1.05)) +
+  theme_classic() +
+  theme(text=element_text(size=16)) +
+  labs(title="Norming Study", 
+       x="Proportion Feminine in Norming Data", 
+       y="Proportion AFAB in Census Data")
+plot_correlation
+```
