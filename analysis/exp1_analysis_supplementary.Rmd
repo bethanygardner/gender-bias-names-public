@@ -23,6 +23,7 @@ options(dplyr.summarise.inform = FALSE)
 library(lme4)
 library(lmerTest)
 library(buildmer)
+library(knitr)
 ```
 
 # Setup
@@ -84,7 +85,7 @@ d.FF.heshe <- d.FF %>% filter(Other==0)
 
 ## Model 1: Condition w/o OTHER
 
-Effect of Name Condition (first name, last name, full name) on
+Effect of Condition (first name, last name, full name) on
 likelihood of a SHE response, as opposed to a HE response, with OTHER
 responses excluded. Participant and Item are again included as random
 intercepts, with items defined as the unique first, last and first +
@@ -100,7 +101,7 @@ No differences in results.
 
 ## Model 2: Condition \* Name Gender w/o OTHER
 
-Effects of Name Condition (first name, full name) and the first name's
+Effects of Condition (first name, full name) and the first name's
 Gender Rating (centered, positive=more feminine) on the likelihood of a
 SHE response as opposed to a HE response, with OTHER responses excluded.
 In Experiment 1, the Last Name condition does not include any instances
@@ -153,7 +154,8 @@ Participants entered their gender in a free-response box.
 
 ```{r}
 d %>% group_by(SubjGender) %>% 
-  summarise(total=n_distinct(Participant))
+  summarise(total=n_distinct(Participant)) %>%
+  kable()
 ```
 
 For this analysis, we exclude participants who did not respond. Because
@@ -165,7 +167,8 @@ d.gender <- d %>% filter(SubjGender != "N/A") %>%
             mutate(SubjGenderMale=(ifelse(SubjGender=="male", 1, 0)))
 
 d.gender %>% group_by(SubjGenderMale) %>% 
-  summarise(total=n_distinct(Participant))
+  summarise(total=n_distinct(Participant)) %>%
+  kable()
 ```
 
 Summary of responses by condition and participant gender.
@@ -186,7 +189,7 @@ d.gender.count_responses <- d.gender %>%
   rename("ParticipantGender"="SubjGenderMale") 
 d.gender.count_responses$ParticipantGender %<>% recode("0"="Non-male", "1"="Male")
 
-print(d.gender.count_responses)
+kable(d.gender.count_responses, digits=3)
 ```
 
 Participant gender is mean centered effects coded, comparing non-male
@@ -210,7 +213,7 @@ contrasts(d.FF.gender$Condition)
 
 ## Model 4: Condition \* Participant Gender
 
-Effect of Name Condition (first name, last name, full name) and
+Effect of Condition (first name, last name, full name) and
 Participant Gender (non-male vs male) on likelihood of a SHE response,
 as opposed to a HE response or OTHER response. Participant and Item are
 again included as random intercepts.
@@ -228,7 +231,7 @@ comparisons. Neither interaction with Condition is significant.
 
 ## Model 5: Condition \* Name Gender \* Participant Gender
 
-Effects of Name Condition (first name, full name), the first name's
+Effects of Condition (first name, full name), the first name's
 Gender Rating (centered, positive=more feminine), and Participant Gender
 (non-male vs. male) on the likelihood of a SHE response as opposed to a
 HE or OTHER responses. In Experiment 1, the Last Name condition does not
@@ -240,7 +243,8 @@ does when using buildmer to find the maximal model (?).
 m_cond_name_subjgender <- buildmer(formula=
             (She ~ Condition * GenderRatingCentered * SubjGenderMale + 
             (1|Participant) + (1|Item)), 
-            data=d.FF.gender, family=binomial, direction=c("order"))
+            data=d.FF.gender, family=binomial, 
+            direction=c("order"), quiet=TRUE)
 summary(m_cond_name_subjgender)
 ```
 

@@ -102,11 +102,11 @@ d.FF.heshe <- d.FF %>% filter(Other==0)
 
 ## Model 1: Condition w/o OTHER
 
-Effect of Name Condition (first name, last name, full name) on
-likelihood of a SHE response, as opposed to a HE response, with OTHER
-responses excluded. Participant and Item are again included as random
-intercepts, with items defined as the unique first, last and first +
-last name combinations.
+Effect of Condition (first name, last name, full name) on likelihood of
+a SHE response, as opposed to a HE response, with OTHER responses
+excluded. Participant and Item are again included as random intercepts,
+with items defined as the unique first, last and first + last name
+combinations.
 
 ``` r
 m.cond_other <- glmer(She ~ Condition + (1|Participant) + (1|Item), 
@@ -150,11 +150,11 @@ No differences in results.
 
 ## Model 2: Condition \* Name Gender w/o OTHER
 
-Effects of Name Condition (first name, full name) and the first name’s
-Gender Rating (centered, positive=more feminine) on the likelihood of a
-SHE response as opposed to a HE response, with OTHER responses excluded.
-In Experiment 1, the Last Name condition does not include any instances
-of the gendered first name, so it is not included here. Participant and
+Effects of Condition (first name, full name) and the first name’s Gender
+Rating (centered, positive=more feminine) on the likelihood of a SHE
+response as opposed to a HE response, with OTHER responses excluded. In
+Experiment 1, the Last Name condition does not include any instances of
+the gendered first name, so it is not included here. Participant and
 Item are again included as random intercepts.
 
 ``` r
@@ -290,17 +290,17 @@ Participants entered their gender in a free-response box.
 
 ``` r
 d %>% group_by(SubjGender) %>% 
-  summarise(total=n_distinct(Participant))
+  summarise(total=n_distinct(Participant)) %>%
+  kable()
 ```
 
-    ## # A tibble: 5 x 2
-    ##   SubjGender  total
-    ##   <fct>       <int>
-    ## 1 female        196
-    ## 2 genderfluid     1
-    ## 3 male          244
-    ## 4 N/A            15
-    ## 5 Non-binary      1
+| SubjGender  | total |
+|:------------|------:|
+| female      |   196 |
+| genderfluid |     1 |
+| male        |   244 |
+| N/A         |    15 |
+| Non-binary  |     1 |
 
 For this analysis, we exclude participants who did not respond. Because
 there are not enough participants to create 3 groups, we compare male to
@@ -311,14 +311,14 @@ d.gender <- d %>% filter(SubjGender != "N/A") %>%
             mutate(SubjGenderMale=(ifelse(SubjGender=="male", 1, 0)))
 
 d.gender %>% group_by(SubjGenderMale) %>% 
-  summarise(total=n_distinct(Participant))
+  summarise(total=n_distinct(Participant)) %>%
+  kable()
 ```
 
-    ## # A tibble: 2 x 2
-    ##   SubjGenderMale total
-    ##            <dbl> <int>
-    ## 1              0   198
-    ## 2              1   244
+| SubjGenderMale | total |
+|---------------:|------:|
+|              0 |   198 |
+|              1 |   244 |
 
 Summary of responses by condition and participant gender.
 
@@ -338,19 +338,17 @@ d.gender.count_responses <- d.gender %>%
   rename("ParticipantGender"="SubjGenderMale") 
 d.gender.count_responses$ParticipantGender %<>% recode("0"="Non-male", "1"="Male")
 
-print(d.gender.count_responses)
+kable(d.gender.count_responses, digits=3)
 ```
 
-    ## # A tibble: 6 x 7
-    ## # Groups:   Condition [3]
-    ##   Condition ParticipantGender    He Other   She She_HeOther She_He
-    ##   <fct>     <chr>             <int> <int> <int>       <dbl>  <dbl>
-    ## 1 first     Non-male            680    83   644      0.844  0.947 
-    ## 2 first     Male                830   131   698      0.726  0.841 
-    ## 3 full      Non-male            656    58   648      0.908  0.988 
-    ## 4 full      Male                823    71   842      0.942  1.02  
-    ## 5 last      Non-male           1114   134   138      0.111  0.124 
-    ## 6 last      Male               1418   176   107      0.0671 0.0755
+| Condition | ParticipantGender |   He | Other | She | She_HeOther | She_He |
+|:----------|:------------------|-----:|------:|----:|------------:|-------:|
+| first     | Non-male          |  680 |    83 | 644 |       0.844 |  0.947 |
+| first     | Male              |  830 |   131 | 698 |       0.726 |  0.841 |
+| full      | Non-male          |  656 |    58 | 648 |       0.908 |  0.988 |
+| full      | Male              |  823 |    71 | 842 |       0.942 |  1.023 |
+| last      | Non-male          | 1114 |   134 | 138 |       0.111 |  0.124 |
+| last      | Male              | 1418 |   176 | 107 |       0.067 |  0.075 |
 
 Participant gender is mean centered effects coded, comparing non-male
 participants to male participants.
@@ -381,10 +379,10 @@ contrasts(d.FF.gender$Condition)
 
 ## Model 4: Condition \* Participant Gender
 
-Effect of Name Condition (first name, last name, full name) and
-Participant Gender (non-male vs male) on likelihood of a SHE response,
-as opposed to a HE response or OTHER response. Participant and Item are
-again included as random intercepts.
+Effect of Condition (first name, last name, full name) and Participant
+Gender (non-male vs male) on likelihood of a SHE response, as opposed to
+a HE response or OTHER response. Participant and Item are again included
+as random intercepts.
 
 ``` r
 m_cond_subjgender <- glmer(She ~ Condition * SubjGenderMale + 
@@ -444,8 +442,8 @@ comparisons. Neither interaction with Condition is significant.
 
 ## Model 5: Condition \* Name Gender \* Participant Gender
 
-Effects of Name Condition (first name, full name), the first name’s
-Gender Rating (centered, positive=more feminine), and Participant Gender
+Effects of Condition (first name, full name), the first name’s Gender
+Rating (centered, positive=more feminine), and Participant Gender
 (non-male vs. male) on the likelihood of a SHE response as opposed to a
 HE or OTHER responses. In Experiment 1, the Last Name condition does not
 include any instances of the gendered first name, so it is not included
@@ -456,144 +454,8 @@ does when using buildmer to find the maximal model (?).
 m_cond_name_subjgender <- buildmer(formula=
             (She ~ Condition * GenderRatingCentered * SubjGenderMale + 
             (1|Participant) + (1|Item)), 
-            data=d.FF.gender, family=binomial, direction=c("order"))
-```
-
-    ## Determining predictor order
-
-    ## Fitting via glm: She ~ 1
-
-    ## Currently evaluating LRT for: Condition, GenderRatingCentered,
-    ##     SubjGenderMale
-
-    ## Fitting via glm: She ~ 1 + Condition
-
-    ## Fitting via glm: She ~ 1 + GenderRatingCentered
-
-    ## Fitting via glm: She ~ 1 + SubjGenderMale
-
-    ## Updating formula: She ~ 1 + GenderRatingCentered
-
-    ## Currently evaluating LRT for: Condition, SubjGenderMale
-
-    ## Fitting via glm: She ~ 1 + GenderRatingCentered + Condition
-
-    ## Fitting via glm: She ~ 1 + GenderRatingCentered + SubjGenderMale
-
-    ## Updating formula: She ~ 1 + GenderRatingCentered + Condition
-
-    ## Currently evaluating LRT for: Condition:GenderRatingCentered,
-    ##     SubjGenderMale
-
-    ## Fitting via glm: She ~ 1 + GenderRatingCentered + Condition +
-    ##     Condition:GenderRatingCentered
-
-    ## Fitting via glm: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale
-
-    ## Updating formula: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale
-
-    ## Currently evaluating LRT for: Condition:GenderRatingCentered,
-    ##     Condition:SubjGenderMale, GenderRatingCentered:SubjGenderMale
-
-    ## Fitting via glm: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale + Condition:GenderRatingCentered
-
-    ## Fitting via glm: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale + Condition:SubjGenderMale
-
-    ## Fitting via glm: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale + GenderRatingCentered:SubjGenderMale
-
-    ## Updating formula: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale + Condition:SubjGenderMale
-
-    ## Currently evaluating LRT for: Condition:GenderRatingCentered,
-    ##     GenderRatingCentered:SubjGenderMale
-
-    ## Fitting via glm: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale + Condition:SubjGenderMale +
-    ##     Condition:GenderRatingCentered
-
-    ## Fitting via glm: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale + Condition:SubjGenderMale +
-    ##     GenderRatingCentered:SubjGenderMale
-
-    ## Updating formula: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale + Condition:SubjGenderMale +
-    ##     GenderRatingCentered:SubjGenderMale
-
-    ## Currently evaluating LRT for: Condition:GenderRatingCentered
-
-    ## Fitting via glm: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale + Condition:SubjGenderMale +
-    ##     GenderRatingCentered:SubjGenderMale +
-    ##     Condition:GenderRatingCentered
-
-    ## Updating formula: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale + Condition:SubjGenderMale +
-    ##     GenderRatingCentered:SubjGenderMale +
-    ##     Condition:GenderRatingCentered
-
-    ## Currently evaluating LRT for:
-    ##     Condition:GenderRatingCentered:SubjGenderMale
-
-    ## Fitting via glm: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale + Condition:SubjGenderMale +
-    ##     GenderRatingCentered:SubjGenderMale +
-    ##     GenderRatingCentered:Condition +
-    ##     Condition:GenderRatingCentered:SubjGenderMale
-
-    ## Updating formula: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale + Condition:SubjGenderMale +
-    ##     GenderRatingCentered:SubjGenderMale +
-    ##     GenderRatingCentered:Condition +
-    ##     Condition:GenderRatingCentered:SubjGenderMale
-
-    ## Fitting via glm: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale + Condition:SubjGenderMale +
-    ##     GenderRatingCentered:SubjGenderMale +
-    ##     GenderRatingCentered:Condition +
-    ##     Condition:GenderRatingCentered:SubjGenderMale
-
-    ## Currently evaluating LRT for: 1 | Item, 1 | Participant
-
-    ## Fitting via glmer, with ML: She ~ 1 + GenderRatingCentered + Condition
-    ##     + SubjGenderMale + Condition:SubjGenderMale +
-    ##     GenderRatingCentered:SubjGenderMale +
-    ##     GenderRatingCentered:Condition +
-    ##     GenderRatingCentered:Condition:SubjGenderMale + (1 | Item)
-
-    ## Fitting via glmer, with ML: She ~ 1 + GenderRatingCentered + Condition
-    ##     + SubjGenderMale + Condition:SubjGenderMale +
-    ##     GenderRatingCentered:SubjGenderMale +
-    ##     GenderRatingCentered:Condition +
-    ##     GenderRatingCentered:Condition:SubjGenderMale + (1 | Participant)
-
-    ## Updating formula: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale + Condition:SubjGenderMale +
-    ##     GenderRatingCentered:SubjGenderMale +
-    ##     GenderRatingCentered:Condition +
-    ##     GenderRatingCentered:Condition:SubjGenderMale + (1 | Item)
-
-    ## Currently evaluating LRT for: 1 | Participant
-
-    ## Fitting via glmer, with ML: She ~ 1 + GenderRatingCentered + Condition
-    ##     + SubjGenderMale + Condition:SubjGenderMale +
-    ##     GenderRatingCentered:SubjGenderMale +
-    ##     GenderRatingCentered:Condition +
-    ##     GenderRatingCentered:Condition:SubjGenderMale + (1 | Item) + (1 |
-    ##     Participant)
-
-    ## Updating formula: She ~ 1 + GenderRatingCentered + Condition +
-    ##     SubjGenderMale + Condition:SubjGenderMale +
-    ##     GenderRatingCentered:SubjGenderMale +
-    ##     GenderRatingCentered:Condition +
-    ##     GenderRatingCentered:Condition:SubjGenderMale + (1 | Item) + (1 |
-    ##     Participant)
-
-``` r
+            data=d.FF.gender, family=binomial, 
+            direction=c("order"), quiet=TRUE)
 summary(m_cond_name_subjgender)
 ```
 

@@ -28,7 +28,6 @@ d <- read.csv("../data/exp2_data.csv", stringsAsFactors=TRUE) %>%
   rename("Participant"="SubjID", "Item"="NameShown") %>%
   select(Participant, SubjGender, Condition, GenderRating, Item, 
          Male, Female, Other)
-
 str(d)
 ```
 
@@ -293,17 +292,17 @@ Participants entered their gender in a free-response box.
 
 ``` r
 d %>% group_by(SubjGender) %>% 
-  summarise(total=n_distinct(Participant))
+  summarise(total=n_distinct(Participant)) %>%
+  kable()
 ```
 
-    ## # A tibble: 5 x 2
-    ##   SubjGender  total
-    ##   <fct>       <int>
-    ## 1 female        566
-    ## 2 genderqueer     1
-    ## 3 male          694
-    ## 4 N/A            88
-    ## 5 non-binary      2
+| SubjGender  | total |
+|:------------|------:|
+| female      |   566 |
+| genderqueer |     1 |
+| male        |   694 |
+| N/A         |    88 |
+| non-binary  |     2 |
 
 For this analysis, we exclude participants who did not respond. Because
 there are not enough participants to create 3 groups, we compare male to
@@ -314,14 +313,14 @@ d.gender <- d %>% filter(SubjGender != "N/A") %>%
             mutate(SubjGenderMale=(ifelse(SubjGender=="male", 1, 0)))
 
 d.gender %>% group_by(SubjGenderMale) %>% 
-  summarise(total=n_distinct(Participant))
+  summarise(total=n_distinct(Participant)) %>%
+  kable()
 ```
 
-    ## # A tibble: 2 x 2
-    ##   SubjGenderMale total
-    ##            <dbl> <int>
-    ## 1              0   569
-    ## 2              1   694
+| SubjGenderMale | total |
+|---------------:|------:|
+|              0 |   569 |
+|              1 |   694 |
 
 Summary of responses by condition and participant gender.
 
@@ -341,19 +340,17 @@ d.gender.count_responses <- d.gender %>%
   rename("ParticipantGender"="SubjGenderMale") 
 d.gender.count_responses$ParticipantGender %<>% recode("0"="Non-male", "1"="Male")
 
-print(d.gender.count_responses)
+kable(d.gender.count_responses)
 ```
 
-    ## # A tibble: 6 x 7
-    ## # Groups:   Condition [3]
-    ##   Condition ParticipantGender Female  Male Other Female_MaleOther Female_Male
-    ##   <fct>     <chr>              <int> <int> <int>            <dbl>       <dbl>
-    ## 1 first     Non-male             684   609    30            1.07        1.12 
-    ## 2 first     Male                 780   847    18            0.902       0.921
-    ## 3 full      Non-male             595   609    49            0.904       0.977
-    ## 4 full      Male                 724   893    42            0.774       0.811
-    ## 5 last      Non-male             170  1145    92            0.137       0.148
-    ## 6 last      Male                 210  1223   121            0.156       0.172
+| Condition | ParticipantGender | Female | Male | Other | Female_MaleOther | Female_Male |
+|:----------|:------------------|-------:|-----:|------:|-----------------:|------------:|
+| first     | Non-male          |    684 |  609 |    30 |        1.0704225 |   1.1231527 |
+| first     | Male              |    780 |  847 |    18 |        0.9017341 |   0.9208973 |
+| full      | Non-male          |    595 |  609 |    49 |        0.9042553 |   0.9770115 |
+| full      | Male              |    724 |  893 |    42 |        0.7743316 |   0.8107503 |
+| last      | Non-male          |    170 | 1145 |    92 |        0.1374293 |   0.1484716 |
+| last      | Male              |    210 | 1223 |   121 |        0.1562500 |   0.1717089 |
 
 Participant gender is mean centered effects coded, comparing non-male
 participants to male participants.

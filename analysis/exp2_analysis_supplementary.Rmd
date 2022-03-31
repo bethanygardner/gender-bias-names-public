@@ -22,6 +22,7 @@ library(dplyr)
 options(dplyr.summarise.inform = FALSE)
 library(lme4)
 library(lmerTest)
+library(knitr)
 ```
 
 # Setup
@@ -34,7 +35,6 @@ d <- read.csv("../data/exp2_data.csv", stringsAsFactors=TRUE) %>%
   rename("Participant"="SubjID", "Item"="NameShown") %>%
   select(Participant, SubjGender, Condition, GenderRating, Item, 
          Male, Female, Other)
-
 str(d)
 ```
 
@@ -154,7 +154,8 @@ Participants entered their gender in a free-response box.
 
 ```{r}
 d %>% group_by(SubjGender) %>% 
-  summarise(total=n_distinct(Participant))
+  summarise(total=n_distinct(Participant)) %>%
+  kable()
 ```
 
 For this analysis, we exclude participants who did not respond. Because
@@ -166,7 +167,8 @@ d.gender <- d %>% filter(SubjGender != "N/A") %>%
             mutate(SubjGenderMale=(ifelse(SubjGender=="male", 1, 0)))
 
 d.gender %>% group_by(SubjGenderMale) %>% 
-  summarise(total=n_distinct(Participant))
+  summarise(total=n_distinct(Participant)) %>%
+  kable()
 ```
 
 Summary of responses by condition and participant gender.
@@ -187,7 +189,7 @@ d.gender.count_responses <- d.gender %>%
   rename("ParticipantGender"="SubjGenderMale") 
 d.gender.count_responses$ParticipantGender %<>% recode("0"="Non-male", "1"="Male")
 
-print(d.gender.count_responses)
+kable(d.gender.count_responses)
 ```
 
 Participant gender is mean centered effects coded, comparing non-male

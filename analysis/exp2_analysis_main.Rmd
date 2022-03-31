@@ -3,10 +3,10 @@ title: 'Experiment 2: Main Analysis'
 author: "Bethany Gardner"
 date: "3/29/2022"
 output: 
-  github_document:
+  pdf_document:
     toc: true
     toc_depth: 3
-  pdf_document:
+  github_document:
     toc: true
     toc_depth: 3
 editor_options: 
@@ -21,6 +21,7 @@ library(dplyr)
 options(dplyr.summarise.inform = FALSE)
 library(lme4)
 library(lmerTest)
+library(knitr)
 ```
 
 # Setup
@@ -69,7 +70,7 @@ d.count_responses <- d %>% group_by(Condition, ResponseAll) %>%
   mutate(Female_MaleOther = Female / (Male+Other),
          Female_Male = Female / Male)
 
-print(d.count_responses)
+kable(d.count_responses, digits=3)
 ```
 -   First name condition has most FEMALE responses
 -   Full name condition has second-most FEMALE responses
@@ -77,7 +78,7 @@ print(d.count_responses)
 
 # Model 1: Condition
 
-Effect of Name Condition (first name, last name, full name) on
+Effect of Condition (first name, last name, full name) on
 likelihood of a FEMALE response, as opposed to a MALE or OTHER response.
 Participant and Item are included as random intercepts, with items
 defined as the unique first, last and first + last name combinations.
@@ -92,7 +93,7 @@ Less likely overall to recall character as FEMALE. Less likely to recall charact
 
 # Model 2: Condition \* Name Gender
 
-Effects of Name Condition (first name, full name) and the first name's
+Effects of Condition (first name, full name) and the first name's
 Gender Rating (centered, positive=more feminine) on the likelihood of a
 FEMALE response, as opposed to a MALE or OTHER response. In Experiment 2, the
 Last Name condition does not include any instances of the gendered first

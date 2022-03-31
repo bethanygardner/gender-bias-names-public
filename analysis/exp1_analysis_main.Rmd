@@ -22,6 +22,7 @@ library(dplyr)
 options(dplyr.summarise.inform = FALSE)
 library(lme4)
 library(lmerTest)
+library(knitr)
 ```
 
 # Setup
@@ -58,7 +59,7 @@ contrasts(d.FF$Condition) = cbind("first vs full"=c(-.5,.5)) #add contrast back
 contrasts(d.FF$Condition)
 ```
 
-# Data summary
+# Data Summary
 
 Responses by condition.
 ```{r}
@@ -74,7 +75,7 @@ d.count_responses <- d %>% group_by(Condition, ResponseAll) %>%
   mutate(She_HeOther = She / (He+Other),
          She_He = She / He)
 
-print(d.count_responses)
+kable(d.count_responses, digits=3, align='c')
 ```
 
 -   First name condition has second-most SHE responses
@@ -83,7 +84,7 @@ print(d.count_responses)
 
 # Model 1: Condition
 
-Effect of Name Condition (first name, last name, full name) on
+Effect of Condition (first name, last name, full name) on
 likelihood of a SHE response, as opposed to a HE or OTHER response.
 Participant and Item are included as random intercepts, with items
 defined as the unique first, last and first + last name combinations.
@@ -100,12 +101,12 @@ Last. Full has more SHE responses than First (n.s. but matches ratios).
 
 # Model 2: Condition \* Name Gender
 
-Effects of Name Condition (first name, full name) and the first name's
+Effects of Condition (first name, full name) and the first name's
 Gender Rating (centered, positive=more feminine) on the likelihood of a
 SHE response, as opposed to a HE or OTHER response. In Experiment 1, the
 Last Name condition does not include any instances of the gendered first
-name, so it is not included here. Participant and Item are again
-included as random intercepts.
+name, so only the First and Full Name conditions are analyzed here. Participant 
+and Item are again included as random intercepts.
 
 ```{r}
 m.namegender <- glmer(She ~ Condition * GenderRatingCentered + 

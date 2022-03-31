@@ -4,7 +4,7 @@ Bethany Gardner
 3/29/2022
 
 -   [Setup](#setup)
--   [Data summary](#data-summary)
+-   [Data Summary](#data-summary)
 -   [Model 1: Condition](#model-1-condition)
 -   [Model 2: Condition \* Name Gender](#model-2-condition--name-gender)
 
@@ -63,7 +63,7 @@ contrasts(d.FF$Condition)
     ## first          -0.5
     ## full            0.5
 
-# Data summary
+# Data Summary
 
 Responses by condition.
 
@@ -80,16 +80,14 @@ d.count_responses <- d %>% group_by(Condition, ResponseAll) %>%
   mutate(She_HeOther = She / (He+Other),
          She_He = She / He)
 
-print(d.count_responses)
+kable(d.count_responses, digits=3, align='c')
 ```
 
-    ## # A tibble: 3 x 6
-    ## # Groups:   Condition [3]
-    ##   Condition    He Other   She She_HeOther She_He
-    ##   <fct>     <int> <int> <int>       <dbl>  <dbl>
-    ## 1 first      1572   225  1395      0.776  0.887 
-    ## 2 full       1514   131  1535      0.933  1.01  
-    ## 3 last       2616   325   251      0.0853 0.0959
+| Condition |  He  | Other | She  | She_HeOther | She_He |
+|:---------:|:----:|:-----:|:----:|:-----------:|:------:|
+|   first   | 1572 |  225  | 1395 |    0.776    | 0.887  |
+|   full    | 1514 |  131  | 1535 |    0.933    | 1.014  |
+|   last    | 2616 |  325  | 251  |    0.085    | 0.096  |
 
 -   First name condition has second-most SHE responses
 -   Full name condition has most SHE responses
@@ -97,12 +95,12 @@ print(d.count_responses)
 
 # Model 1: Condition
 
-Effect of Name Condition (first name, last name, full name) on
-likelihood of a SHE response, as opposed to a HE or OTHER response.
-Participant and Item are included as random intercepts, with items
-defined as the unique first, last and first + last name combinations.
-Because the condition manipulations were fully between-subject and
-between-item, fitting a random slope model was not possible.
+Effect of Condition (first name, last name, full name) on likelihood of
+a SHE response, as opposed to a HE or OTHER response. Participant and
+Item are included as random intercepts, with items defined as the unique
+first, last and first + last name combinations. Because the condition
+manipulations were fully between-subject and between-item, fitting a
+random slope model was not possible.
 
 ``` r
 m.cond <- glmer(She ~ Condition + (1|Participant) + (1|Item), 
@@ -147,12 +145,12 @@ Last. Full has more SHE responses than First (n.s. but matches ratios).
 
 # Model 2: Condition \* Name Gender
 
-Effects of Name Condition (first name, full name) and the first name’s
-Gender Rating (centered, positive=more feminine) on the likelihood of a
-SHE response, as opposed to a HE or OTHER response. In Experiment 1, the
+Effects of Condition (first name, full name) and the first name’s Gender
+Rating (centered, positive=more feminine) on the likelihood of a SHE
+response, as opposed to a HE or OTHER response. In Experiment 1, the
 Last Name condition does not include any instances of the gendered first
-name, so it is not included here. Participant and Item are again
-included as random intercepts.
+name, so only the First and Full Name conditions are analyzed here.
+Participant and Item are again included as random intercepts.
 
 ``` r
 m.namegender <- glmer(She ~ Condition * GenderRatingCentered + 
