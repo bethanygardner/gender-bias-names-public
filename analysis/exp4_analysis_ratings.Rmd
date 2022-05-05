@@ -1,0 +1,175 @@
+---
+title: 'Experiment 4: Ratings Analyses'
+author: "Bethany Gardner"
+date: "4/07/2022"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 3
+  pdf_document:
+    toc: true
+    toc_depth: 3
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+library(magrittr)
+library(tidyr)
+library(dplyr)
+options(dplyr.summarise.inform = FALSE)
+library(lme4)
+library(lmerTest)
+library(buildmer)
+library(kableExtra)
+```
+
+# Setup
+
+Load data and select columns used in model. See data/exp4_data_about.txt
+for more details.
+
+```{r}
+d <- read.csv("../data/exp4_data.csv", stringsAsFactors=TRUE) %>%
+  rename("Participant"="SubjID", "Item"="Name") %>%
+  select(Participant, Condition, 
+         GenderRating, Item, Male, Female, Other,
+         Likeable, Accomplished, Important)
+str(d)
+```
+
+Center gender rating for names: Original scale from 1 to 7, with 1 as
+most masculine and 7 as most feminine. Mean-centered with higher still
+as more feminine.
+
+```{r}
+d %<>% mutate(GenderRatingCentered=scale(GenderRating, scale=FALSE))
+```
+
+Set contrasts for name conditions, now weighted to account for uneven
+sample sizes. This uses Scott Fraundorf's function for weighted
+contrasts. (The psycholing package version doesn't support doing 2v1
+comparisons, only 1v1.) Condition1 is Last vs First+Full. Condition2 is
+First vs Full.
+
+```{r}
+source("centerfactor.R")
+contrasts(d$Condition) <- centerfactor(d$Condition, c("last","first"))
+contrasts(d$Condition)
+```
+
+Flip ratings from 1=most likeable/accomplished/important to 7=most
+L/A/I, to make interpreting models easier, then mean-center.
+
+```{r}
+d %<>% mutate(
+  LikeableFlip = recode(Likeable, 
+      '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
+  AccomplishedFlip = recode(Accomplished,
+      '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
+  ImportantFlip = recode(Important,
+      '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
+  LikeableCentered = scale(LikeableFlip, scale=FALSE),
+  AccomplishedCentered = scale(AccomplishedFlip, scale=FALSE),
+  ImportantCentered = scale(ImportantFlip, scale=FALSE))
+
+str(d)
+```
+
+# Likeability
+
+Summary statistics:
+
+```{r}
+summary(d$Likeable)
+summary(d$LikeableFlip)
+sd(d$Likeable)
+```
+
+Does the Likeability rating of the character predict how likely the
+character is to be recalled as female, as opposed to male or other? The
+maximal model includes random intercepts by item, but not by
+participant.
+
+```{r}
+m.likeable <- buildmer(
+  formula=(Female ~ Condition * GenderRatingCentered * 
+           LikeableCentered + (1|Participant) + (1|Item)),
+  data=d, family=binomial, direction=c("order"))
+
+summary(m.likeable)
+```
+
+-   Characters who are rated more Likeable are more likely to be
+    recalled as female across conditions
+
+-   Interaction with Name Gender Rating: stronger effect of Likeability
+    rating for more feminine names
+
+-   Interaction with Condition (F vs F): n.s. after multiple comparisons
+
+-   No other interactions significant
+
+# Accomplishment
+
+Summary statistics:
+
+```{r}
+summary(d$Accomplished)
+summary(d$AccomplishedFlip)
+sd(d$Accomplished)
+```
+
+Does the Accomplishment rating of the character predict how likely the
+character is to be recalled as female, as opposed to male or other? The
+maximal model includes random intercepts by item, but not by
+participant.
+
+```{r}
+m.accomplished <- buildmer(
+  formula=(Female ~ Condition * GenderRatingCentered * 
+           AccomplishedCentered + (1|Participant) + (1|Item)),
+  data=d, family=binomial, direction=c("order"))
+
+summary(m.accomplished)
+```
+
+-   Characters who were rated more Accomplished were more likely to be
+    recalled as female, but this is n.s. after correction for multiple
+    comparisons.
+
+-   Interaction with Name Gender Rating: stronger effect of
+    Accomplishment rating for more feminine names
+
+-   Interaction between Condition (L vs F+F), Name Gender Rating, and
+    Accomplishment: n.s. after correction for multiple comparisons
+
+# Importance
+
+Summary statistics:
+
+```{r}
+summary(d$Important)
+summary(d$ImportantFlip)
+sd(d$Important)
+```
+
+Does the Importance rating of the character predict how likely the
+character is to be recalled as female, as opposed to male or other? The
+maximal model includes random intercepts by item, but not by
+participant.
+
+```{r}
+m.important <- buildmer(
+  formula=(Female ~ Condition * GenderRatingCentered * 
+           ImportantCentered + (1|Participant) + (1|Item)),
+  data=d, family=binomial, direction=c("order"))
+
+summary(m.important)
+```
+
+-   No main effect of Importance like there was for other ratings
+
+-   Interaction with Name Gender Rating: stronger effect of Importance
+    rating for more feminine names

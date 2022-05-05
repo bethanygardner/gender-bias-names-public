@@ -1,2 +1,0 @@
-# gender-bias-names-public
- 

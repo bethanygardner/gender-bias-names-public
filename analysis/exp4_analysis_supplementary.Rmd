@@ -1,0 +1,195 @@
+---
+title: 'Experiment 4: Supplementary Analyses'
+author: "Bethany Gardner"
+date: "4/07/2022"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 3
+  pdf_document:
+    toc: true
+    toc_depth: 3
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+library(magrittr)
+library(tidyr)
+library(dplyr)
+options(dplyr.summarise.inform = FALSE)
+library(lme4)
+library(lmerTest)
+library(kableExtra)
+```
+
+# Setup
+
+Load data and select columns used in model. See data/exp4_data_about.txt
+for more details.
+
+```{r}
+d <- read.csv("../data/exp4_data.csv", stringsAsFactors=TRUE) %>%
+  rename("Participant"="SubjID", "Item"="Name") %>%
+  select(Participant, Condition, SubjGender, GenderRating, Item, Male, Female, Other)
+str(d)
+```
+
+Center gender rating for names: Original scale from 1 to 7, with 1 as
+most masculine and 7 as most feminine. Mean-centered with higher still
+as more feminine.
+
+```{r}
+d %<>% mutate(GenderRatingCentered=scale(d$GenderRating, scale=FALSE))
+```
+
+Set contrasts for name conditions, now weighted to account for uneven
+sample sizes. This uses Scott Fraundorf's function for weighted
+contrasts. (The psycholing package version doesn't support doing 2v1
+comparisons, only 1v1.) Condition1 is Last vs First+Full. Condition2 is
+First vs Full.
+
+```{r}
+source("centerfactor.R")
+contrasts(d$Condition) <- centerfactor(d$Condition, c("last","first"))
+contrasts(d$Condition)
+```
+
+# Without *Other* Responses
+
+The first supplementary analysis tests if excluding *other* responses
+(2.99% of total responses) affects the pattern of results.
+
+```{r}
+o <- sum(d$Other) 
+o
+o/length(d$Other) 
+```
+
+Exclude *other* responses.
+
+```{r}
+d.noOther <- d %>% filter(Other==0)
+```
+
+Effect of Name Condition (first name, last name, full name) and first
+name Gender Rating on likelihood of a *female* response, as opposed to a
+*male* response, with *other* responses excluded. Participant and Item
+are again included as random intercepts, with items defined as the
+unique first, last and first + last name combinations.
+
+```{r}
+m.noOther <- glmer(Female ~ Condition * GenderRatingCentered + 
+                   (1|Participant) + (1|Item), 
+                   data=d.noOther, family=binomial)
+summary(m.noOther)
+```
+
+Compared to the main model:
+
+-   Intercept and Condition2:GenderRatingCentered (difference between
+    Last Name and First+Full name conditions) potentially smaller
+    differences
+
+-   Condition2 now trending
+
+# Quadratic Name Gender Rating
+
+The second supplementary analysis tested the effect of squared name
+gender rating, such that larger values meant names with stronger gender
+associations (masc or fem), and smaller values meant names with weaker
+gender associations.
+
+```{r}
+d %<>% mutate(GenderRatingSquared=GenderRatingCentered^2)
+
+m.quad <- glmer(Female ~ Condition*GenderRatingCentered + 
+                Condition*GenderRatingSquared +
+                (1|Participant) + (1|Item), 
+          d, family="binomial")
+summary(m.quad)
+```
+
+-   Condition (F v F) \* Quadratic Gender Rating interaction, but n.s.
+    after correction for multiple comparisons, so not making a big deal
+    of it
+
+# Participant Gender
+
+## Setup/Data Summary
+
+The third supplementary analysis looks at participant gender: if male
+participants show a larger bias to recall the character as male than
+non-male participants.
+
+Participants entered their gender in a free-response box.
+
+```{r}
+d %>% group_by(SubjGender) %>% 
+  summarise(total=n_distinct(Participant)) %>% kable()
+```
+
+For this analysis, we exclude participants who did not respond. Because
+there are not enough participants to create 3 groups, we compare male
+(male, transgender male) to non-male participants (female, non-binary,
+transgender female).
+
+```{r}
+d.gender <- d %>% filter(SubjGender != "N/A") %>%
+            mutate(SubjGenderMale=(ifelse(
+              SubjGender=="male"|SubjGender=="transgender male", 1, 0)))
+
+d.gender %>% group_by(SubjGenderMale) %>% 
+  summarise(total=n_distinct(Participant)) %>% kable()
+```
+
+Summary of responses by condition and participant gender.
+
+```{r}
+d.gender %<>% mutate(ResponseAll=case_when(
+              Male==1 ~ "Male",
+              Female==1 ~ "Female", 
+              Other==1 ~ "Other"))
+
+d.gender.count_responses <- d.gender %>% 
+  group_by(Condition, ResponseAll, SubjGenderMale) %>%
+  summarise(n=n()) %>%
+  pivot_wider(names_from=c(ResponseAll),
+              values_from=n) %>%
+  mutate(Female_MaleOther = Female / (Male+Other),
+         Female_Male = Female / Male) %>%
+  rename("ParticipantGender"="SubjGenderMale") 
+d.gender.count_responses$ParticipantGender %<>% recode("0"="Non-male", "1"="Male")
+
+kable(d.gender.count_responses)
+```
+
+Participant gender is mean centered effects coded, comparing non-male
+participants to male participants.
+
+```{r}
+d.gender$SubjGenderMale %<>% as.factor()
+contrasts(d.gender$SubjGenderMale)=cbind("NM_M"=c(-.5,.5)) 
+contrasts(d.gender$SubjGenderMale)
+```
+
+## Model: Condition \* Name Gender \* Participant Gender
+
+Effects of Name Condition (first name, full name), the first name's
+Gender Rating (centered, positive=more feminine), and Participant Gender
+(non-male vs. male) on the likelihood of a *female* response as opposed
+to *male* or *other* responses.
+
+```{r}
+m.subjgender <- glmer(Female ~ 
+      Condition * GenderRatingCentered * SubjGenderMale + 
+      (1|Participant) + (1|Item), 
+      data=d.gender, family=binomial)
+summary(m.subjgender)
+```
+
+-   Male participants less likely to recall character as female than
+    non-male participants overall.
+
+-   No other interactions with participant gender significant.
