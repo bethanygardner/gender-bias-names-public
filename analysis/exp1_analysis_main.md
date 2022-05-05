@@ -1,11 +1,12 @@
 Experiment 1: Main Analyses
 ================
 Bethany Gardner
-3/29/2022
+05/05/2022
 
 -   [Setup](#setup)
 -   [Data Summary](#data-summary)
 -   [Model 1: Condition](#model-1-condition)
+    -   [Convert to Odds Ratios](#convert-to-odds-ratios)
 -   [Model 2: Condition \* Name Gender](#model-2-condition--name-gender)
 
 # Setup
@@ -89,22 +90,23 @@ kable(d.count_responses, digits=3, align='c')
 |   full    | 1514 |  131  | 1535 |    0.933    | 1.014  |
 |   last    | 2616 |  325  | 251  |    0.085    | 0.096  |
 
--   First name condition has second-most SHE responses
--   Full name condition has most SHE responses
--   Last name condition has fewest SHE responses
+-   First name condition has second-most *she* responses
+-   Full name condition has most *she* responses
+-   Last name condition has fewest *she* responses
 
 # Model 1: Condition
 
 Effect of Condition (first name, last name, full name) on likelihood of
-a SHE response, as opposed to a HE or OTHER response. Participant and
-Item are included as random intercepts, with items defined as the unique
-first, last and first + last name combinations. Because the condition
-manipulations were fully between-subject and between-item, fitting a
-random slope model was not possible.
+a *she* response, as opposed to a *he* or *other* response. Participant
+and Item are included as random intercepts, with items defined as the
+unique first, last and first + last name combinations. Because the
+condition manipulations were fully between-subject and between-item,
+fitting a random slope model was not possible.
 
 ``` r
 m.cond <- glmer(She ~ Condition + (1|Participant) + (1|Item), 
             data=d, family=binomial)
+m.cond_tidy <- tidy(m.cond) 
 summary(m.cond)
 ```
 
@@ -140,14 +142,130 @@ summary(m.cond)
     ## Cndtnvfrst/ -0.181       
     ## Cndtnfrstvf -0.360 -0.239
 
-Fewer SHE responses overall. First+Full have more SHE responses than
-Last. Full has more SHE responses than First (n.s. but matches ratios).
+-   Fewer *she* responses overall
+
+-   First+Full have more *she* responses than Last. Full has more *she*
+    responses than First (n.s. but matches ratios).
+
+## Convert to Odds Ratios
+
+**Intercept**
+
+``` r
+m.cond_intercept <- m.cond_tidy %>% filter(term=="(Intercept)") %>%
+  select(estimate) %>% as.numeric()
+
+exp(m.cond_intercept)
+```
+
+    ## [1] 0.2396996
+
+``` r
+exp(-m.cond_intercept)
+```
+
+    ## [1] 4.171888
+
+0.24x less likely to use to use *she* overall. Easier to interpret:
+4.17x more likely to use *he* or *other* overall*.*
+
+**Condition: Last vs First+Full**
+
+``` r
+m.cond_LFF <- m.cond_tidy %>% 
+  filter(term=="Conditionlast vs first/full") %>%
+  select(estimate) %>% as.numeric()
+exp(m.cond_LFF)
+```
+
+    ## [1] 16.846
+
+16.85x more likely to use *she* in First + Full compared to Last. –>
+16.85 times more likely to use *he* and *other* in Last than in First +
+Full.
+
+**Condition: Last Only**
+
+Dummy code with Last Name as 0, so that intercept is the Last Name
+condition only.
+
+``` r
+d %<>% mutate(Condition_Last=case_when(
+  Condition=="first" ~ 1,
+  Condition=="full" ~ 1,
+  Condition=="last" ~ 0))
+d$Condition_Last %<>% as.factor()
+```
+
+``` r
+m.last <- glmer(She ~ Condition_Last + (1|Participant) + (1|Item), 
+          data=d, family=binomial)
+m.last_tidy <- tidy(m.last)
+```
+
+``` r
+m.cond_last <- m.last_tidy %>% 
+  filter(term=="(Intercept)") %>%
+  select(estimate) %>% as.numeric()
+
+exp(m.cond_last)
+```
+
+    ## [1] 0.0371584
+
+``` r
+exp(-m.cond_last)
+```
+
+    ## [1] 26.91181
+
+0.04x times less likely to use *she* in the Last Name condition –>
+26.91x more likely to use *he* and *other* in the Last Name condition.
+
+**Condition: First and Full Only**
+
+Dummy code with First and Full Name as 0, so that intercept is average
+for these two conditions.
+
+``` r
+d %<>% mutate(Condition_FF=case_when(
+  Condition=="first" ~ 0,
+  Condition=="full" ~ 0,
+  Condition=="last" ~ 1))
+d$Condition_FF %<>% as.factor()
+```
+
+``` r
+m.ff <- glmer(She ~ Condition_FF + (1|Participant) + (1|Item), 
+          data=d, family=binomial)
+m.ff_tidy <- tidy(m.ff)
+```
+
+``` r
+m.cond_ff <- m.ff_tidy %>% 
+  filter(term=="(Intercept)") %>%
+  select(estimate) %>% as.numeric()
+
+exp(m.cond_ff)
+```
+
+    ## [1] 0.7045676
+
+``` r
+exp(-m.cond_ff)
+```
+
+    ## [1] 1.41931
+
+0.70x times less likely to use *she* in the First and Full Name
+conditions –> 1.42x more likely to use *he* and *other* in the First and
+Full Name conditions.
 
 # Model 2: Condition \* Name Gender
 
 Effects of Condition (first name, full name) and the first name’s Gender
-Rating (centered, positive=more feminine) on the likelihood of a SHE
-response, as opposed to a HE or OTHER response. In Experiment 1, the
+Rating (centered, positive=more feminine) on the likelihood of a *she*
+response, as opposed to a *he* or *other* response. In Experiment 1, the
 Last Name condition does not include any instances of the gendered first
 name, so only the First and Full Name conditions are analyzed here.
 Participant and Item are again included as random intercepts.
@@ -156,6 +274,7 @@ Participant and Item are again included as random intercepts.
 m.namegender <- glmer(She ~ Condition * GenderRatingCentered + 
             (1|Participant) + (1|Item), 
             data=d.FF, family=binomial)
+m.namegender_tidy <- tidy(m.namegender)
 summary(m.namegender)
 ```
 
@@ -199,6 +318,7 @@ summary(m.namegender)
     ## GndrRtngCnt -0.179  0.122       
     ## Cvfll:GndRC  0.111 -0.172 -0.409
 
-More SHE responses as first names become more feminine. Difference
-between First and Full is now significant (as compared to condition-only
-model).
+-   More *she* responses as first names become more feminine.
+
+-   Difference between First and Full is now significant (as compared to
+    condition-only model).

@@ -1,11 +1,12 @@
 Experiment 2: Main Analysis
 ================
 Bethany Gardner
-3/29/2022
+05/05/2022
 
 -   [Setup](#setup)
--   [Data summary](#data-summary)
+-   [Data Summary](#data-summary)
 -   [Model 1: Condition](#model-1-condition)
+    -   [Convert to Odds Ratios](#convert-to-odds-ratios)
 -   [Model 2: Condition \* Name Gender](#model-2-condition--name-gender)
 
 # Setup
@@ -63,15 +64,15 @@ contrasts(d.FF$Condition)
     ## first          -0.5
     ## full            0.5
 
-# Data summary
+# Data Summary
 
 Responses by condition.
 
 ``` r
-d <- d %>% mutate(ResponseAll=case_when(
-           Male==1 ~ "Male",
-           Female==1 ~ "Female", 
-           Other==1 ~ "Other"))
+d %<>% mutate(ResponseAll=case_when(
+              Male==1 ~ "Male",
+              Female==1 ~ "Female", 
+              Other==1 ~ "Other"))
 
 d.count_responses <- d %>% group_by(Condition, ResponseAll) %>%
   summarise(n=n()) %>%
@@ -89,22 +90,23 @@ kable(d.count_responses, digits=3)
 | full      |   1430 | 1633 |   101 |            0.825 |       0.876 |
 | last      |    403 | 2490 |   243 |            0.147 |       0.162 |
 
--   First name condition has most FEMALE responses
--   Full name condition has second-most FEMALE responses
--   Last name condition has fewest FEMALE responses
+-   First name condition has most *female* responses
+-   Full name condition has second-most *female* responses
+-   Last name condition has fewest *female* responses
 
 # Model 1: Condition
 
 Effect of Condition (first name, last name, full name) on likelihood of
-a FEMALE response, as opposed to a MALE or OTHER response. Participant
-and Item are included as random intercepts, with items defined as the
-unique first, last and first + last name combinations. Because the
-condition manipulations were fully between-subject and between-item,
-fitting a random slope model was not possible.
+a *female* response, as opposed to a *male* or *other* response.
+Participant and Item are included as random intercepts, with items
+defined as the unique first, last and first + last name combinations.
+Because the condition manipulations were fully between-subject and
+between-item, fitting a random slope model was not possible.
 
 ``` r
 m.cond <- glmer(Female ~ Condition + (1|Participant) + (1|Item), 
             data=d, family=binomial)
+m.cond_tidy <- tidy(m.cond)
 summary(m.cond)
 ```
 
@@ -140,23 +142,139 @@ summary(m.cond)
     ## Cndtnvfrst/ -0.170       
     ## Cndtnfrstvf -0.360 -0.241
 
-Less likely overall to recall character as FEMALE. Less likely to recall
-character as FEMALE in the Last Name condition as compared to the First
-and Full Name conditions.
+-   Less likely overall to recall character as female.
+
+-   Less likely to recall character as female in the Last Name condition
+    as compared to the First and Full Name conditions.
+
+## Convert to Odds Ratios
+
+**Intercept**
+
+``` r
+m.cond_intercept <- m.cond_tidy %>% 
+  filter(term=="(Intercept)") %>%
+  select(estimate) %>% as.numeric()
+
+exp(m.cond_intercept)
+```
+
+    ## [1] 0.4147892
+
+``` r
+exp(-m.cond_intercept)
+```
+
+    ## [1] 2.410863
+
+0.41x less likely to recall as female overall. Easier to interpret:
+2.41x more likely to recall as male/other overall.
+
+**Condition: Last vs First+Full**
+
+``` r
+m.cond_LFF <- m.cond_tidy %>% 
+  filter(term=="Conditionlast vs first/full") %>%
+  select(estimate) %>% as.numeric()
+exp(m.cond_LFF)
+```
+
+    ## [1] 7.288822
+
+7.29x more likely to recall as female in First + Full compared to Last.
+–> 7.29 more likely to recall as male in Last than in First + Full.
+
+**Condition: Last Only**
+
+Dummy code with Last Name as 0, so that intercept is the Last Name
+condition only.
+
+``` r
+d %<>% mutate(Condition_Last=case_when(
+  Condition=="first" ~ 1,
+  Condition=="full" ~ 1,
+  Condition=="last" ~ 0))
+d$Condition_Last %<>% as.factor()
+```
+
+``` r
+m.last <- glmer(Female ~ Condition_Last + (1|Participant) + (1|Item), 
+          data=d, family=binomial)
+m.last_tidy <- tidy(m.last)
+```
+
+``` r
+m.cond_last <- m.last_tidy %>% 
+  filter(term=="(Intercept)") %>%
+  select(estimate) %>% as.numeric()
+
+exp(m.cond_last)
+```
+
+    ## [1] 0.1118068
+
+``` r
+exp(-m.cond_last)
+```
+
+    ## [1] 8.943996
+
+0.11x times less likely to recall as female in the Last Name condition
+–> 8.94x more likely to recall as male in the Last Name condition.
+
+**Condition: First and Full Only**
+
+Dummy code with First and Full Name as 0, so that intercept is average
+for these two conditions.
+
+``` r
+d %<>% mutate(Condition_FF=case_when(
+  Condition=="first" ~ 0,
+  Condition=="full" ~ 0,
+  Condition=="last" ~ 1))
+d$Condition_FF %<>% as.factor()
+```
+
+``` r
+m.ff <- glmer(Female ~ Condition_FF + (1|Participant) + (1|Item), 
+          data=d, family=binomial)
+m.ff_tidy <- tidy(m.ff)
+```
+
+``` r
+m.cond_ff <- m.ff_tidy %>% 
+  filter(term=="(Intercept)") %>%
+  select(estimate) %>% as.numeric()
+
+exp(m.cond_ff)
+```
+
+    ## [1] 0.7555928
+
+``` r
+exp(-m.cond_ff)
+```
+
+    ## [1] 1.323464
+
+0.75x times less likely to recall characters as female in the First and
+Full Name conditions –> 1.32x more likely to use recall characters as
+male in the First and Full Name conditions.
 
 # Model 2: Condition \* Name Gender
 
 Effects of Condition (first name, full name) and the first name’s Gender
-Rating (centered, positive=more feminine) on the likelihood of a FEMALE
-response, as opposed to a MALE or OTHER response. In Experiment 2, the
-Last Name condition does not include any instances of the gendered first
-name, so it is not included here. Participant and Item are again
-included as random intercepts.
+Rating (centered, positive=more feminine) on the likelihood of a
+*female* response, as opposed to a *male* or *other* response. In
+Experiment 2, the Last Name condition does not include any instances of
+the gendered first name, so it is not included here. Participant and
+Item are again included as random intercepts.
 
 ``` r
 m.namegender <- glmer(Female ~ Condition * GenderRatingCentered + 
             (1|Participant) + (1|Item), 
             data=d.FF, family=binomial)
+m.namegender_tidy <- tidy(m.namegender)
 summary(m.namegender)
 ```
 
@@ -200,9 +318,13 @@ summary(m.namegender)
     ## GndrRtngCnt -0.065 -0.013       
     ## Cvfll:GndRC -0.010 -0.057 -0.304
 
-Less likely overall to recall character as female in the First and Full
-Name conditions. Somewhat more likely to recall the character as female
-in the First Name condition as compared to the Full Name condition
-(trending). More likely to recall character as female as first name
-becomes more feminine. No interaction between name condition and first
-name gender rating.
+-   Less likely overall to recall character as female in the First and
+    Full Name conditions.
+
+-   Somewhat more likely to recall the character as female in the First
+    Name condition as compared to the Full Name condition (trending).
+
+-   More likely to recall character as female as first name becomes more
+    feminine.
+
+-   No interaction between name condition and first name gender rating.
