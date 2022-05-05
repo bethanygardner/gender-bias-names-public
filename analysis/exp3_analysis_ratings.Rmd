@@ -1,0 +1,169 @@
+---
+title: 'Experiment 3: Ratings Analysis'
+author: "Bethany Gardner"
+date: "4/07/2022"
+output: 
+  pdf_document:
+    toc: true
+    toc_depth: 3
+  github_document:
+    toc: true
+    toc_depth: 3
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(magrittr)
+library(tidyr)
+library(dplyr)
+options(dplyr.summarise.inform = FALSE)
+library(lme4)
+library(lmerTest)
+library(buildmer)
+```
+
+# Setup
+
+Load data and select columns used in model. See data/exp3_data_about.txt
+for more details.
+
+```{r}
+d <- read.csv("../data/exp3_data.csv", stringsAsFactors=TRUE) %>%
+  rename("Participant"="SubjID", "Item"="Name") %>%
+  select(Participant, Condition, GenderRating, Item, 
+         He, She, Other, Likeable, Accomplished, Important)
+str(d)
+```
+
+Center gender rating for names: Original scale from 1 to 7, with 1 as
+most masculine and 7 as most feminine. Mean-centered with higher still
+as more feminine.
+
+```{r}
+d %<>% mutate(GenderRatingCentered=scale(d$GenderRating, scale=FALSE))
+```
+
+Set contrasts for name conditions, now weighted to account for uneven
+sample sizes. This uses Scott Fraundorf's function for weighted
+contrasts. (The psycholing package version doesn't support doing 2v1
+comparisons, only 1v1.) Condition1 is Last vs First+Full. Condition2 is
+First vs Full.
+
+```{r}
+source("centerfactor.R")
+contrasts(d$Condition) <- centerfactor(d$Condition, c("last","first"))
+contrasts(d$Condition)
+```
+
+Flip ratings from 1=most likeable/accomplished/important to 7=most
+L/A/I, to make interpreting models easier, then mean-center.
+
+```{r}
+d %<>% mutate(
+  LikeableFlip = recode(Likeable, 
+      '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
+  AccomplishedFlip = recode(Accomplished,
+      '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
+  ImportantFlip = recode(Important,
+      '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
+  LikeableCentered = scale(LikeableFlip, scale=FALSE),
+  AccomplishedCentered = scale(AccomplishedFlip, scale=FALSE),
+  ImportantCentered = scale(ImportantFlip, scale=FALSE))
+
+str(d)
+```
+
+# Likeability
+
+Summary statistics:
+
+```{r}
+summary(d$Likeable)
+summary(d$LikeableFlip)
+sd(d$Likeable)
+```
+
+Does the Likeability rating of the character predict the likelihood of
+*she* as opposed to *he* and *other* responses? The maximal model
+includes all interactions, then random intercepts by item but not by
+participant.
+
+```{r}
+m.likeable <- buildmer(
+  formula=(She ~ Condition * GenderRatingCentered * 
+           LikeableCentered + (1|Participant) + (1|Item)),
+  data=d, family=binomial, 
+  direction=c("order"), quiet=TRUE)
+
+summary(m.likeable)
+```
+
+-   Characters who are rated as more Likeable are more likely to be
+    referred to with *she*
+
+
+# Accomplishment
+
+Summary statistics:
+
+```{r}
+summary(d$Accomplished)
+summary(d$AccomplishedFlip)
+sd(d$Accomplished)
+```
+
+Does the Accomplishment rating of the character predict the likelihood
+of *she* as opposed to *he* and *other* responses? The maximal model
+includes all interactions, then random intercepts by item but not by
+participant.
+
+```{r}
+m.accomplished <- buildmer(
+  formula=(She ~ Condition * GenderRatingCentered * 
+           AccomplishedCentered + (1|Participant) + (1|Item)),
+  data=d, family=binomial, 
+  direction=c("order"), quiet=TRUE)
+
+summary(m.accomplished)
+```
+
+-   Characters who are rated as more Accomplished are more likely to be
+    referred to with *she*, but this is n.s. after correction for multiple
+    comparisons.
+
+-   Interaction between Accomplishment, Name Gender Rating, and
+    Condition (L vs F+F), but this is n.s. after correction for multiple
+    comparisons, so I'm not going to dig into it.
+
+# Importance
+
+Summary statistics:
+
+```{r}
+summary(d$Important)
+summary(d$ImportantFlip)
+sd(d$Important)
+```
+
+Does the Importance rating of the character predict the likelihood of
+*she* as opposed to *he* and *other* responses The maximal model
+includes all interactions, then random intercepts by item but not by
+participant.
+
+```{r}
+m.important <- buildmer(
+  formula=(She ~ Condition * GenderRatingCentered * 
+           ImportantCentered + (1|Participant) + (1|Item)),
+  data=d, family=binomial, 
+  direction=c("order"), quiet=TRUE)
+
+summary(m.important)
+```
+
+-   Interaction between Important, Name Gender Rating, and Condition (L
+    vs F+F), but this is way too small to be significant after
+    correction for multiple comparisons
+
