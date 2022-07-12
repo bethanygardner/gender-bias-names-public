@@ -1,10 +1,16 @@
 Experiment 4: Supplementary Analyses
 ================
 Bethany Gardner
-4/07/2022
+2022-07-07
 
 -   [Setup](#setup)
 -   [Without *Other* Responses](#without-other-responses)
+    -   [Odds Ratios: Intercept](#odds-ratios-intercept)
+    -   [Odds Ratios: Last vs
+        First+Full](#odds-ratios-last-vs-firstfull)
+    -   [Odds Ratios: Last Only](#odds-ratios-last-only)
+    -   [Odds Ratios: First and Full
+        Only](#odds-ratios-first-and-full-only)
 -   [Quadratic Name Gender Rating](#quadratic-name-gender-rating)
 -   [Participant Gender](#participant-gender)
     -   [Setup/Data Summary](#setupdata-summary)
@@ -13,14 +19,44 @@ Bethany Gardner
 
 # Setup
 
+-   Variable names:
+
+    -   Experiment: exp4
+
+    -   Type
+
+        -   d = data
+        -   m = model
+        -   est = log odds estimate from model
+        -   OR = odds ratio converted from est
+
+    -   Analysis
+
+        -   count =sums of response types
+        -   cond = effect of Condition (Last vs First+Full)
+        -   nameGender = effects of Condition (First vs Full) and Name
+            Gender Rating
+
+    -   Subset
+
+        -   all = including *other* responses
+
+        -   noOther = excluding *other* responses
+
+        -   FF = First and Full Name conditions only
+
+        -   Last = Last Name condition only
+
 Load data and select columns used in model. See data/exp4_data_about.txt
 for more details.
 
 ``` r
-d <- read.csv("../data/exp4_data.csv", stringsAsFactors=TRUE) %>%
+exp4_d <- read.csv("../data/exp4_data.csv", 
+                   stringsAsFactors=TRUE) %>%
   rename("Participant"="SubjID", "Item"="Name") %>%
-  select(Participant, Condition, SubjGender, GenderRating, Item, Male, Female, Other)
-str(d)
+  select(Participant, Condition, SubjGender, 
+         GenderRating, Item, Male, Female, Other)
+str(exp4_d)
 ```
 
     ## 'data.frame':    8771 obs. of  8 variables:
@@ -38,7 +74,8 @@ most masculine and 7 as most feminine. Mean-centered with higher still
 as more feminine.
 
 ``` r
-d %<>% mutate(GenderRatingCentered=scale(d$GenderRating, scale=FALSE))
+exp4_d %<>% mutate(GenderRatingCentered=
+                     scale(GenderRating, scale=FALSE))
 ```
 
 Set contrasts for name conditions, now weighted to account for uneven
@@ -49,8 +86,8 @@ First vs Full.
 
 ``` r
 source("centerfactor.R")
-contrasts(d$Condition) <- centerfactor(d$Condition, c("last","first"))
-contrasts(d$Condition)
+contrasts(exp4_d$Condition) <- centerfactor(exp4_d$Condition, c("last","first"))
+contrasts(exp4_d$Condition)
 ```
 
     ##             [,1]         [,2]
@@ -64,14 +101,13 @@ The first supplementary analysis tests if excluding *other* responses
 (2.99% of total responses) affects the pattern of results.
 
 ``` r
-o <- sum(d$Other) 
-o
+sum(exp4_d$Other) 
 ```
 
     ## [1] 262
 
 ``` r
-o/length(d$Other) 
+sum(exp4_d$Other)/length(exp4_d$Other) 
 ```
 
     ## [1] 0.02987117
@@ -79,7 +115,7 @@ o/length(d$Other)
 Exclude *other* responses.
 
 ``` r
-d.noOther <- d %>% filter(Other==0)
+exp4_d_noOther <- exp4_d %>% filter(Other==0)
 ```
 
 Effect of Name Condition (first name, last name, full name) and first
@@ -89,10 +125,11 @@ are again included as random intercepts, with items defined as the
 unique first, last and first + last name combinations.
 
 ``` r
-m.noOther <- glmer(Female ~ Condition * GenderRatingCentered + 
-                   (1|Participant) + (1|Item), 
-                   data=d.noOther, family=binomial)
-summary(m.noOther)
+exp4_m_noOther <- glmer(
+  Female ~ Condition * GenderRatingCentered + 
+    (1|Participant) + (1|Item), 
+  data=exp4_d_noOther, family=binomial)
+summary(exp4_m_noOther)
 ```
 
     ## Generalized linear mixed model fit by maximum likelihood (Laplace
@@ -100,7 +137,7 @@ summary(m.noOther)
     ##  Family: binomial  ( logit )
     ## Formula: Female ~ Condition * GenderRatingCentered + (1 | Participant) +  
     ##     (1 | Item)
-    ##    Data: d.noOther
+    ##    Data: exp4_d_noOther
     ## 
     ##      AIC      BIC   logLik deviance df.resid 
     ##   8737.3   8793.7  -4360.6   8721.3     8501 
@@ -142,6 +179,208 @@ Compared to the main model:
 
 -   Condition2 now trending
 
+## Odds Ratios: Intercept
+
+``` r
+exp4_OR_noOther_I <- exp4_m_noOther %>%
+  tidy() %>%
+  filter(term=="(Intercept)") %>%
+  select(estimate) %>% as.numeric()
+exp(exp4_OR_noOther_I)
+```
+
+    ## [1] 0.8486549
+
+``` r
+exp(-exp4_OR_noOther_I)
+```
+
+    ## [1] 1.178335
+
+``` r
+#Save this for the table comparing all 4 experiments
+exp4_OR_noOther_I <- exp(-exp4_OR_noOther_I) %>%
+  round(2)
+```
+
+0.84x less likely to recall as female overall. Easier to interpret:
+1.18x more likely to recall as male overall, p\<.05
+
+## Odds Ratios: Last vs First+Full
+
+``` r
+exp4_est_noOther_LFF <- exp4_m_noOther %>% 
+  tidy() %>%
+  filter(term=="Condition1") %>%
+  select(estimate) %>% as.numeric()
+exp(exp4_est_noOther_LFF)
+```
+
+    ## [1] 1.144702
+
+``` r
+#Save this for the table comparing all 4 experiments
+exp4_OR_noOther_LFF <- exp(exp4_est_noOther_LFF) %>% 
+  round(2)
+```
+
+1.14x more likely to recall as female in First + Full compared to Last,
+p\<.05
+
+## Odds Ratios: Last Only
+
+Dummy code with Last Name as 0, so that intercept is the Last Name
+condition only.
+
+``` r
+exp4_d_noOther %<>% mutate(Condition_Last=case_when(
+  Condition=="first" ~ 1,
+  Condition=="full" ~ 1,
+  Condition=="last" ~ 0))
+exp4_d_noOther$Condition_Last %<>% as.factor()
+```
+
+``` r
+exp4_m_noOther_L <- glmer(
+  Female ~ Condition_Last + (1|Participant) + (1|Item), 
+  data=exp4_d_noOther, family=binomial)
+summary(exp4_m_noOther_L)
+```
+
+    ## Generalized linear mixed model fit by maximum likelihood (Laplace
+    ##   Approximation) [glmerMod]
+    ##  Family: binomial  ( logit )
+    ## Formula: Female ~ Condition_Last + (1 | Participant) + (1 | Item)
+    ##    Data: exp4_d_noOther
+    ## 
+    ##      AIC      BIC   logLik deviance df.resid 
+    ##   8858.6   8886.8  -4425.3   8850.6     8505 
+    ## 
+    ## Scaled residuals: 
+    ##     Min      1Q  Median      3Q     Max 
+    ## -3.0926 -0.5697 -0.2723  0.5620  4.0294 
+    ## 
+    ## Random effects:
+    ##  Groups      Name        Variance Std.Dev.
+    ##  Participant (Intercept) 0.04761  0.2182  
+    ##  Item        (Intercept) 2.28035  1.5101  
+    ## Number of obs: 8509, groups:  Participant, 1232; Item, 63
+    ## 
+    ## Fixed effects:
+    ##                 Estimate Std. Error z value Pr(>|z|)   
+    ## (Intercept)     -0.27233    0.19639  -1.387  0.16553   
+    ## Condition_Last1  0.16052    0.05804   2.766  0.00568 **
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Correlation of Fixed Effects:
+    ##             (Intr)
+    ## Condtn_Lst1 -0.198
+
+``` r
+exp4_est_noOther_L <- exp4_m_noOther_L %>%
+  tidy() %>%
+  filter(term=="(Intercept)") %>%
+  select(estimate) %>% as.numeric()
+
+exp(exp4_est_noOther_L)
+```
+
+    ## [1] 0.7616004
+
+``` r
+exp(-exp4_est_noOther_L)
+```
+
+    ## [1] 1.313025
+
+``` r
+#Save this for the table comparing all 4 experiments
+exp4_OR_noOther_L <- exp(-exp4_est_noOther_L) %>% 
+  round(2)
+```
+
+0.76x times less likely to recall as female in the Last Name condition
+–\> 1.31x more likely to recall as male in the Last Name condition,
+p=.17
+
+## Odds Ratios: First and Full Only
+
+Dummy code with First and Full Name as 0, so that intercept is average
+for these two conditions.
+
+``` r
+exp4_d_noOther %<>% mutate(Condition_FF=case_when(
+  Condition=="first" ~ 0,
+  Condition=="full" ~ 0,
+  Condition=="last" ~ 1))
+exp4_d_noOther$Condition_FF %<>% as.factor()
+```
+
+``` r
+exp4_m_noOther_FF <- glmer(
+  Female ~ Condition_FF + (1|Participant) + (1|Item), 
+  data=exp4_d_noOther, family=binomial)
+summary(exp4_m_noOther_FF)
+```
+
+    ## Generalized linear mixed model fit by maximum likelihood (Laplace
+    ##   Approximation) [glmerMod]
+    ##  Family: binomial  ( logit )
+    ## Formula: Female ~ Condition_FF + (1 | Participant) + (1 | Item)
+    ##    Data: exp4_d_noOther
+    ## 
+    ##      AIC      BIC   logLik deviance df.resid 
+    ##   8858.6   8886.8  -4425.3   8850.6     8505 
+    ## 
+    ## Scaled residuals: 
+    ##     Min      1Q  Median      3Q     Max 
+    ## -3.0926 -0.5697 -0.2723  0.5620  4.0294 
+    ## 
+    ## Random effects:
+    ##  Groups      Name        Variance Std.Dev.
+    ##  Participant (Intercept) 0.04761  0.2182  
+    ##  Item        (Intercept) 2.28035  1.5101  
+    ## Number of obs: 8509, groups:  Participant, 1232; Item, 63
+    ## 
+    ## Fixed effects:
+    ##               Estimate Std. Error z value Pr(>|z|)   
+    ## (Intercept)   -0.11182    0.19344  -0.578  0.56324   
+    ## Condition_FF1 -0.16052    0.05804  -2.766  0.00568 **
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Correlation of Fixed Effects:
+    ##             (Intr)
+    ## Conditn_FF1 -0.099
+
+``` r
+exp4_est_noOther_FF <- exp4_m_noOther_FF %>%
+  tidy() %>%
+  filter(term=="(Intercept)") %>%
+  select(estimate) %>% as.numeric()
+
+exp(exp4_est_noOther_FF)
+```
+
+    ## [1] 0.894209
+
+``` r
+exp(-exp4_est_noOther_FF)
+```
+
+    ## [1] 1.118307
+
+``` r
+#Save this for the table comparing all 4 experiments
+exp4_OR_noOther_FF <- exp(-exp4_est_noOther_FF) %>% 
+  round(2)
+```
+
+0.89x less likely to recall as female in First and Full Name conditions
+–\> 1.12x more likely to recall as male in First and Full Name
+conditions, p=0.56
+
 # Quadratic Name Gender Rating
 
 The second supplementary analysis tested the effect of squared name
@@ -150,13 +389,13 @@ associations (masc or fem), and smaller values meant names with weaker
 gender associations.
 
 ``` r
-d %<>% mutate(GenderRatingSquared=GenderRatingCentered^2)
+exp4_d %<>% mutate(GenderRatingSquared=GenderRatingCentered^2)
 
-m.quad <- glmer(Female ~ Condition*GenderRatingCentered + 
-                Condition*GenderRatingSquared +
-                (1|Participant) + (1|Item), 
-          d, family="binomial")
-summary(m.quad)
+exp4_m_nameGenderQuad <- glmer(
+  Female ~ Condition*GenderRatingCentered + Condition*GenderRatingSquared +
+    (1|Participant) + (1|Item), 
+  exp4_d, family="binomial")
+summary(exp4_m_nameGenderQuad)
 ```
 
     ## Generalized linear mixed model fit by maximum likelihood (Laplace
@@ -165,7 +404,7 @@ summary(m.quad)
     ## Formula: 
     ## Female ~ Condition * GenderRatingCentered + Condition * GenderRatingSquared +  
     ##     (1 | Participant) + (1 | Item)
-    ##    Data: d
+    ##    Data: exp4_d
     ## 
     ##      AIC      BIC   logLik deviance df.resid 
     ##   9142.9   9220.8  -4560.4   9120.9     8760 
@@ -220,72 +459,18 @@ non-male participants.
 Participants entered their gender in a free-response box.
 
 ``` r
-d %>% group_by(SubjGender) %>% 
+exp4_d %>% group_by(SubjGender) %>% 
   summarise(total=n_distinct(Participant)) %>% kable()
 ```
 
-<table>
-<thead>
-<tr>
-<th style="text-align:left;">
-SubjGender
-</th>
-<th style="text-align:right;">
-total
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:left;">
-female
-</td>
-<td style="text-align:right;">
-555
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-male
-</td>
-<td style="text-align:right;">
-602
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-non-binary
-</td>
-<td style="text-align:right;">
-3
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-transgender female
-</td>
-<td style="text-align:right;">
-1
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-transgender male
-</td>
-<td style="text-align:right;">
-1
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-NA
-</td>
-<td style="text-align:right;">
-91
-</td>
-</tr>
-</tbody>
-</table>
+| SubjGender         | total |
+|:-------------------|------:|
+| female             |   555 |
+| male               |   602 |
+| non-binary         |     3 |
+| transgender female |     1 |
+| transgender male   |     1 |
+| NA                 |    91 |
 
 For this analysis, we exclude participants who did not respond. Because
 there are not enough participants to create 3 groups, we compare male
@@ -293,241 +478,50 @@ there are not enough participants to create 3 groups, we compare male
 transgender female).
 
 ``` r
-d.gender <- d %>% filter(SubjGender != "N/A") %>%
-            mutate(SubjGenderMale=(ifelse(
-              SubjGender=="male"|SubjGender=="transgender male", 1, 0)))
+exp4_d_gender <- exp4_d %>% 
+  filter(SubjGender != "N/A") %>%
+  mutate(SubjGenderMale=(ifelse(
+    SubjGender=="male"|SubjGender=="transgender male", 1, 0)))
 
-d.gender %>% group_by(SubjGenderMale) %>% 
-  summarise(total=n_distinct(Participant)) %>% kable()
+exp4_d_gender %>% group_by(SubjGenderMale) %>% 
+  summarise(total=n_distinct(Participant)) %>%
+  kable()
 ```
 
-<table>
-<thead>
-<tr>
-<th style="text-align:right;">
-SubjGenderMale
-</th>
-<th style="text-align:right;">
-total
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:right;">
-0
-</td>
-<td style="text-align:right;">
-559
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:right;">
-603
-</td>
-</tr>
-</tbody>
-</table>
+| SubjGenderMale | total |
+|---------------:|------:|
+|              0 |   559 |
+|              1 |   603 |
 
 Summary of responses by condition and participant gender.
 
 ``` r
-d.gender %<>% mutate(ResponseAll=case_when(
-              Male==1 ~ "Male",
-              Female==1 ~ "Female", 
-              Other==1 ~ "Other"))
+exp4_d_gender %<>% mutate(ResponseAll=case_when(
+  Male==1 ~ "Male",
+  Female==1 ~ "Female", 
+  Other==1 ~ "Other"))
 
-d.gender.count_responses <- d.gender %>% 
-  group_by(Condition, ResponseAll, SubjGenderMale) %>%
-  summarise(n=n()) %>%
-  pivot_wider(names_from=c(ResponseAll),
-              values_from=n) %>%
-  mutate(Female_MaleOther = Female / (Male+Other),
-         Female_Male = Female / Male) %>%
-  rename("ParticipantGender"="SubjGenderMale") 
-d.gender.count_responses$ParticipantGender %<>% recode("0"="Non-male", "1"="Male")
+exp4_d_gender <- exp4_d %>% 
+  filter(SubjGender != "N/A") %>%
+  mutate(SubjGenderMale=(ifelse(SubjGender=="male", 1, 0)))
 
-kable(d.gender.count_responses)
+exp4_d_gender %>% group_by(SubjGenderMale) %>% 
+  summarise(total=n_distinct(Participant)) %>%
+  kable()
 ```
 
-<table>
-<thead>
-<tr>
-<th style="text-align:left;">
-Condition
-</th>
-<th style="text-align:left;">
-ParticipantGender
-</th>
-<th style="text-align:right;">
-Female
-</th>
-<th style="text-align:right;">
-Male
-</th>
-<th style="text-align:right;">
-Other
-</th>
-<th style="text-align:right;">
-Female_MaleOther
-</th>
-<th style="text-align:right;">
-Female_Male
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:left;">
-first
-</td>
-<td style="text-align:left;">
-Non-male
-</td>
-<td style="text-align:right;">
-676
-</td>
-<td style="text-align:right;">
-692
-</td>
-<td style="text-align:right;">
-46
-</td>
-<td style="text-align:right;">
-0.9159892
-</td>
-<td style="text-align:right;">
-0.9768786
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-first
-</td>
-<td style="text-align:left;">
-Male
-</td>
-<td style="text-align:right;">
-619
-</td>
-<td style="text-align:right;">
-718
-</td>
-<td style="text-align:right;">
-14
-</td>
-<td style="text-align:right;">
-0.8456284
-</td>
-<td style="text-align:right;">
-0.8621170
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-full
-</td>
-<td style="text-align:left;">
-Non-male
-</td>
-<td style="text-align:right;">
-624
-</td>
-<td style="text-align:right;">
-584
-</td>
-<td style="text-align:right;">
-45
-</td>
-<td style="text-align:right;">
-0.9920509
-</td>
-<td style="text-align:right;">
-1.0684932
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-full
-</td>
-<td style="text-align:left;">
-Male
-</td>
-<td style="text-align:right;">
-636
-</td>
-<td style="text-align:right;">
-707
-</td>
-<td style="text-align:right;">
-57
-</td>
-<td style="text-align:right;">
-0.8324607
-</td>
-<td style="text-align:right;">
-0.8995757
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-last
-</td>
-<td style="text-align:left;">
-Non-male
-</td>
-<td style="text-align:right;">
-568
-</td>
-<td style="text-align:right;">
-639
-</td>
-<td style="text-align:right;">
-39
-</td>
-<td style="text-align:right;">
-0.8377581
-</td>
-<td style="text-align:right;">
-0.8888889
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-last
-</td>
-<td style="text-align:left;">
-Male
-</td>
-<td style="text-align:right;">
-634
-</td>
-<td style="text-align:right;">
-792
-</td>
-<td style="text-align:right;">
-44
-</td>
-<td style="text-align:right;">
-0.7583732
-</td>
-<td style="text-align:right;">
-0.8005051
-</td>
-</tr>
-</tbody>
-</table>
+| SubjGenderMale | total |
+|---------------:|------:|
+|              0 |   560 |
+|              1 |   602 |
 
 Participant gender is mean centered effects coded, comparing non-male
 participants to male participants.
 
 ``` r
-d.gender$SubjGenderMale %<>% as.factor()
-contrasts(d.gender$SubjGenderMale)=cbind("NM_M"=c(-.5,.5)) 
-contrasts(d.gender$SubjGenderMale)
+exp4_d_gender$SubjGenderMale %<>% as.factor()
+contrasts(exp4_d_gender$SubjGenderMale)=cbind("NM_M"=c(-.5,.5)) 
+contrasts(exp4_d_gender$SubjGenderMale)
 ```
 
     ##   NM_M
@@ -542,11 +536,17 @@ Gender Rating (centered, positive=more feminine), and Participant Gender
 to *male* or *other* responses.
 
 ``` r
-m.subjgender <- glmer(Female ~ 
+exp4_m_gender <- glmer(Female ~ 
       Condition * GenderRatingCentered * SubjGenderMale + 
       (1|Participant) + (1|Item), 
-      data=d.gender, family=binomial)
-summary(m.subjgender)
+      data=exp4_d_gender, family=binomial)
+```
+
+    ## Warning in checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv, :
+    ## Model failed to converge with max|grad| = 0.00332225 (tol = 0.002, component 1)
+
+``` r
+summary(exp4_m_gender)
 ```
 
     ## Generalized linear mixed model fit by maximum likelihood (Laplace
@@ -554,64 +554,64 @@ summary(m.subjgender)
     ##  Family: binomial  ( logit )
     ## Formula: Female ~ Condition * GenderRatingCentered * SubjGenderMale +  
     ##     (1 | Participant) + (1 | Item)
-    ##    Data: d.gender
+    ##    Data: exp4_d_gender
     ## 
     ##      AIC      BIC   logLik deviance df.resid 
-    ##   8483.6   8581.6  -4227.8   8455.6     8120 
+    ##   8484.2   8582.3  -4228.1   8456.2     8120 
     ## 
     ## Scaled residuals: 
     ##     Min      1Q  Median      3Q     Max 
-    ## -3.4061 -0.5731 -0.2626  0.5799  4.8537 
+    ## -3.4046 -0.5731 -0.2629  0.5807  4.8566 
     ## 
     ## Random effects:
     ##  Groups      Name        Variance Std.Dev.
-    ##  Participant (Intercept) 0.1825   0.4272  
-    ##  Item        (Intercept) 0.3673   0.6060  
+    ##  Participant (Intercept) 0.1829   0.4276  
+    ##  Item        (Intercept) 0.3675   0.6062  
     ## Number of obs: 8134, groups:  Participant, 1162; Item, 63
     ## 
     ## Fixed effects:
     ##                                                    Estimate Std. Error z value
-    ## (Intercept)                                        -0.25022    0.08272  -3.025
-    ## Condition1                                          0.15037    0.06379   2.357
-    ## Condition2                                          0.07764    0.07464   1.040
-    ## GenderRatingCentered                                0.76492    0.04662  16.409
-    ## SubjGenderMaleNM_M                                 -0.19870    0.06077  -3.270
-    ## Condition1:GenderRatingCentered                     0.09637    0.03620   2.662
-    ## Condition2:GenderRatingCentered                    -0.09858    0.04345  -2.269
-    ## Condition1:SubjGenderMaleNM_M                      -0.02392    0.12794  -0.187
-    ## Condition2:SubjGenderMaleNM_M                      -0.14448    0.14940  -0.967
-    ## GenderRatingCentered:SubjGenderMaleNM_M            -0.01992    0.03494  -0.570
-    ## Condition1:GenderRatingCentered:SubjGenderMaleNM_M  0.04097    0.07261   0.564
-    ## Condition2:GenderRatingCentered:SubjGenderMaleNM_M -0.05269    0.08694  -0.606
+    ## (Intercept)                                        -0.25084    0.08274  -3.032
+    ## Condition1                                          0.14966    0.06379   2.346
+    ## Condition2                                          0.07633    0.07463   1.023
+    ## GenderRatingCentered                                0.76485    0.04663  16.404
+    ## SubjGenderMaleNM_M                                 -0.19530    0.06079  -3.213
+    ## Condition1:GenderRatingCentered                     0.09614    0.03620   2.656
+    ## Condition2:GenderRatingCentered                    -0.09911    0.04344  -2.281
+    ## Condition1:SubjGenderMaleNM_M                      -0.01862    0.12793  -0.146
+    ## Condition2:SubjGenderMaleNM_M                      -0.13395    0.14939  -0.897
+    ## GenderRatingCentered:SubjGenderMaleNM_M            -0.01808    0.03493  -0.517
+    ## Condition1:GenderRatingCentered:SubjGenderMaleNM_M  0.04372    0.07259   0.602
+    ## Condition2:GenderRatingCentered:SubjGenderMaleNM_M -0.04707    0.08692  -0.542
     ##                                                    Pr(>|z|)    
-    ## (Intercept)                                         0.00249 ** 
-    ## Condition1                                          0.01841 *  
-    ## Condition2                                          0.29824    
+    ## (Intercept)                                         0.00243 ** 
+    ## Condition1                                          0.01897 *  
+    ## Condition2                                          0.30643    
     ## GenderRatingCentered                                < 2e-16 ***
-    ## SubjGenderMaleNM_M                                  0.00108 ** 
-    ## Condition1:GenderRatingCentered                     0.00777 ** 
-    ## Condition2:GenderRatingCentered                     0.02329 *  
-    ## Condition1:SubjGenderMaleNM_M                       0.85170    
-    ## Condition2:SubjGenderMaleNM_M                       0.33350    
-    ## GenderRatingCentered:SubjGenderMaleNM_M             0.56862    
-    ## Condition1:GenderRatingCentered:SubjGenderMaleNM_M  0.57257    
-    ## Condition2:GenderRatingCentered:SubjGenderMaleNM_M  0.54450    
+    ## SubjGenderMaleNM_M                                  0.00131 ** 
+    ## Condition1:GenderRatingCentered                     0.00791 ** 
+    ## Condition2:GenderRatingCentered                     0.02252 *  
+    ## Condition1:SubjGenderMaleNM_M                       0.88427    
+    ## Condition2:SubjGenderMaleNM_M                       0.36991    
+    ## GenderRatingCentered:SubjGenderMaleNM_M             0.60483    
+    ## Condition1:GenderRatingCentered:SubjGenderMaleNM_M  0.54698    
+    ## Condition2:GenderRatingCentered:SubjGenderMaleNM_M  0.58813    
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Correlation of Fixed Effects:
     ##             (Intr) Cndtn1 Cndtn2 GndrRC SGMNM_ Cn1:GRC Cn2:GRC C1:SGM C2:SGM
     ## Condition1   0.009                                                          
-    ## Condition2  -0.007 -0.007                                                   
+    ## Condition2  -0.008 -0.008                                                   
     ## GndrRtngCnt -0.029  0.007  0.012                                            
-    ## SbjGndMNM_M -0.011  0.039 -0.042 -0.018                                     
+    ## SbjGndMNM_M -0.010  0.040 -0.039 -0.017                                     
     ## Cndtn1:GnRC  0.005 -0.122  0.017  0.025 -0.017                              
-    ## Cndtn2:GnRC  0.012  0.017 -0.104 -0.024  0.000 -0.035                       
-    ## Cn1:SGMNM_M  0.013 -0.063 -0.028 -0.003  0.020 -0.019   0.000               
-    ## Cn2:SGMNM_M -0.014 -0.031 -0.005 -0.002 -0.011  0.000  -0.041  -0.007       
-    ## GRC:SGMNM_M -0.015 -0.018  0.001 -0.012 -0.112  0.057  -0.052   0.009  0.024
-    ## C1:GRC:SGMN -0.004 -0.020  0.000  0.016  0.010 -0.082  -0.036  -0.123  0.018
-    ## C2:GRC:SGMN -0.001  0.000 -0.041 -0.018  0.024 -0.038   0.002   0.017 -0.103
+    ## Cndtn2:GnRC  0.011  0.017 -0.104 -0.024  0.001 -0.035                       
+    ## Cn1:SGMNM_M  0.013 -0.061 -0.026 -0.003  0.019 -0.018   0.000               
+    ## Cn2:SGMNM_M -0.013 -0.029 -0.002 -0.002 -0.012  0.000  -0.040  -0.007       
+    ## GRC:SGMNM_M -0.015 -0.017  0.002 -0.011 -0.112  0.059  -0.049   0.009  0.024
+    ## C1:GRC:SGMN -0.004 -0.019  0.000  0.016  0.010 -0.080  -0.033  -0.123  0.018
+    ## C2:GRC:SGMN -0.001  0.001 -0.040 -0.016  0.023 -0.036   0.006   0.017 -0.104
     ##             GRC:SG C1:GRC:
     ## Condition1                
     ## Condition2                
@@ -622,8 +622,10 @@ summary(m.subjgender)
     ## Cn1:SGMNM_M               
     ## Cn2:SGMNM_M               
     ## GRC:SGMNM_M               
-    ## C1:GRC:SGMN  0.057        
-    ## C2:GRC:SGMN -0.050 -0.034
+    ## C1:GRC:SGMN  0.056        
+    ## C2:GRC:SGMN -0.050 -0.034 
+    ## optimizer (Nelder_Mead) convergence code: 0 (OK)
+    ## Model failed to converge with max|grad| = 0.00332225 (tol = 0.002, component 1)
 
 -   Male participants less likely to recall character as female than
     non-male participants overall.

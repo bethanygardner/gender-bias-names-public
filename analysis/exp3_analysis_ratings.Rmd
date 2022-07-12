@@ -1,7 +1,7 @@
 ---
 title: 'Experiment 3: Ratings Analysis'
 author: "Bethany Gardner"
-date: "4/07/2022"
+date: "`r Sys.Date()`"
 output: 
   pdf_document:
     toc: true
@@ -27,15 +27,30 @@ library(buildmer)
 
 # Setup
 
+Variable names:
+
+-   Experiment: exp3
+-   Type
+    -   d = data
+    -   m = model
+    -   p = plot
+    -   est = log odds estimate from model
+    -   OR = odds ratio converted from est
+-   Analysis
+    -   Lik = likability ratings
+    -   Acc = accomplishment ratings
+    -   Imp = importance ratings
+
 Load data and select columns used in model. See data/exp3_data_about.txt
 for more details.
 
 ```{r}
-d <- read.csv("../data/exp3_data.csv", stringsAsFactors=TRUE) %>%
+exp3_d <- read.csv("../data/exp3_data.csv", stringsAsFactors=TRUE) %>%
   rename("Participant"="SubjID", "Item"="Name") %>%
   select(Participant, Condition, GenderRating, Item, 
-         He, She, Other, Likeable, Accomplished, Important)
-str(d)
+         He, She, Other,
+         Likeable, Accomplished, Important)
+str(exp3_d)
 ```
 
 Center gender rating for names: Original scale from 1 to 7, with 1 as
@@ -43,7 +58,8 @@ most masculine and 7 as most feminine. Mean-centered with higher still
 as more feminine.
 
 ```{r}
-d %<>% mutate(GenderRatingCentered=scale(d$GenderRating, scale=FALSE))
+exp3_d %<>% mutate(GenderRatingCentered=
+  scale(GenderRating, scale=FALSE))
 ```
 
 Set contrasts for name conditions, now weighted to account for uneven
@@ -54,26 +70,29 @@ First vs Full.
 
 ```{r}
 source("centerfactor.R")
-contrasts(d$Condition) <- centerfactor(d$Condition, c("last","first"))
-contrasts(d$Condition)
+contrasts(exp3_d$Condition) <- centerfactor(
+  exp3_d$Condition, c("last","first"))
+contrasts(exp3_d$Condition)
 ```
 
 Flip ratings from 1=most likeable/accomplished/important to 7=most
 L/A/I, to make interpreting models easier, then mean-center.
 
 ```{r}
-d %<>% mutate(
+exp3_d %<>% mutate(
   LikeableFlip = recode(Likeable, 
       '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
   AccomplishedFlip = recode(Accomplished,
       '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
   ImportantFlip = recode(Important,
       '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
-  LikeableCentered = scale(LikeableFlip, scale=FALSE),
-  AccomplishedCentered = scale(AccomplishedFlip, scale=FALSE),
-  ImportantCentered = scale(ImportantFlip, scale=FALSE))
-
-str(d)
+  LikeableCentered = 
+      scale(LikeableFlip, scale=FALSE),
+  AccomplishedCentered = 
+      scale(AccomplishedFlip, scale=FALSE),
+  ImportantCentered = 
+    scale(ImportantFlip, scale=FALSE))
+str(exp3_d)
 ```
 
 # Likeability
@@ -81,9 +100,9 @@ str(d)
 Summary statistics:
 
 ```{r}
-summary(d$Likeable)
-summary(d$LikeableFlip)
-sd(d$Likeable)
+summary(exp3_d$Likeable)
+summary(exp3_d$LikeableFlip)
+sd(exp3_d$Likeable)
 ```
 
 Does the Likeability rating of the character predict the likelihood of
@@ -92,27 +111,26 @@ includes all interactions, then random intercepts by item but not by
 participant.
 
 ```{r}
-m.likeable <- buildmer(
+exp3_m_lik <- buildmer(
   formula=(She ~ Condition * GenderRatingCentered * 
            LikeableCentered + (1|Participant) + (1|Item)),
-  data=d, family=binomial, 
+  data=exp3_d, family=binomial, 
   direction=c("order"), quiet=TRUE)
 
-summary(m.likeable)
+summary(exp3_m_lik)
 ```
 
 -   Characters who are rated as more Likeable are more likely to be
     referred to with *she*
-
 
 # Accomplishment
 
 Summary statistics:
 
 ```{r}
-summary(d$Accomplished)
-summary(d$AccomplishedFlip)
-sd(d$Accomplished)
+summary(exp3_d$Accomplished)
+summary(exp3_d$AccomplishedFlip)
+sd(exp3_d$Accomplished)
 ```
 
 Does the Accomplishment rating of the character predict the likelihood
@@ -121,18 +139,18 @@ includes all interactions, then random intercepts by item but not by
 participant.
 
 ```{r}
-m.accomplished <- buildmer(
+exp3_m_acc <- buildmer(
   formula=(She ~ Condition * GenderRatingCentered * 
-           AccomplishedCentered + (1|Participant) + (1|Item)),
-  data=d, family=binomial, 
+    AccomplishedCentered + (1|Participant) + (1|Item)),
+  data=exp3_d, family=binomial, 
   direction=c("order"), quiet=TRUE)
 
-summary(m.accomplished)
+summary(exp3_m_acc)
 ```
 
 -   Characters who are rated as more Accomplished are more likely to be
-    referred to with *she*, but this is n.s. after correction for multiple
-    comparisons.
+    referred to with *she*, but this is n.s. after correction for
+    multiple comparisons.
 
 -   Interaction between Accomplishment, Name Gender Rating, and
     Condition (L vs F+F), but this is n.s. after correction for multiple
@@ -143,9 +161,9 @@ summary(m.accomplished)
 Summary statistics:
 
 ```{r}
-summary(d$Important)
-summary(d$ImportantFlip)
-sd(d$Important)
+summary(exp3_d$Important)
+summary(exp3_d$ImportantFlip)
+sd(exp3_d$Important)
 ```
 
 Does the Importance rating of the character predict the likelihood of
@@ -154,16 +172,15 @@ includes all interactions, then random intercepts by item but not by
 participant.
 
 ```{r}
-m.important <- buildmer(
+exp3_m_imp <- buildmer(
   formula=(She ~ Condition * GenderRatingCentered * 
            ImportantCentered + (1|Participant) + (1|Item)),
-  data=d, family=binomial, 
+  data=exp3_d, family=binomial, 
   direction=c("order"), quiet=TRUE)
 
-summary(m.important)
+summary(exp3_m_imp)
 ```
 
 -   Interaction between Important, Name Gender Rating, and Condition (L
     vs F+F), but this is way too small to be significant after
     correction for multiple comparisons
-

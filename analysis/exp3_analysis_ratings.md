@@ -1,7 +1,7 @@
 Experiment 3: Ratings Analysis
 ================
 Bethany Gardner
-4/07/2022
+2022-07-07
 
 -   [Setup](#setup)
 -   [Likeability](#likeability)
@@ -10,15 +10,30 @@ Bethany Gardner
 
 # Setup
 
+Variable names:
+
+-   Experiment: exp3
+-   Type
+    -   d = data
+    -   m = model
+    -   p = plot
+    -   est = log odds estimate from model
+    -   OR = odds ratio converted from est
+-   Analysis
+    -   Lik = likability ratings
+    -   Acc = accomplishment ratings
+    -   Imp = importance ratings
+
 Load data and select columns used in model. See data/exp3_data_about.txt
 for more details.
 
 ``` r
-d <- read.csv("../data/exp3_data.csv", stringsAsFactors=TRUE) %>%
+exp3_d <- read.csv("../data/exp3_data.csv", stringsAsFactors=TRUE) %>%
   rename("Participant"="SubjID", "Item"="Name") %>%
   select(Participant, Condition, GenderRating, Item, 
-         He, She, Other, Likeable, Accomplished, Important)
-str(d)
+         He, She, Other,
+         Likeable, Accomplished, Important)
+str(exp3_d)
 ```
 
     ## 'data.frame':    8904 obs. of  10 variables:
@@ -38,7 +53,8 @@ most masculine and 7 as most feminine. Mean-centered with higher still
 as more feminine.
 
 ``` r
-d %<>% mutate(GenderRatingCentered=scale(d$GenderRating, scale=FALSE))
+exp3_d %<>% mutate(GenderRatingCentered=
+  scale(GenderRating, scale=FALSE))
 ```
 
 Set contrasts for name conditions, now weighted to account for uneven
@@ -49,8 +65,9 @@ First vs Full.
 
 ``` r
 source("centerfactor.R")
-contrasts(d$Condition) <- centerfactor(d$Condition, c("last","first"))
-contrasts(d$Condition)
+contrasts(exp3_d$Condition) <- centerfactor(
+  exp3_d$Condition, c("last","first"))
+contrasts(exp3_d$Condition)
 ```
 
     ##             [,1]        [,2]
@@ -62,18 +79,20 @@ Flip ratings from 1=most likeable/accomplished/important to 7=most
 L/A/I, to make interpreting models easier, then mean-center.
 
 ``` r
-d %<>% mutate(
+exp3_d %<>% mutate(
   LikeableFlip = recode(Likeable, 
       '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
   AccomplishedFlip = recode(Accomplished,
       '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
   ImportantFlip = recode(Important,
       '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
-  LikeableCentered = scale(LikeableFlip, scale=FALSE),
-  AccomplishedCentered = scale(AccomplishedFlip, scale=FALSE),
-  ImportantCentered = scale(ImportantFlip, scale=FALSE))
-
-str(d)
+  LikeableCentered = 
+      scale(LikeableFlip, scale=FALSE),
+  AccomplishedCentered = 
+      scale(AccomplishedFlip, scale=FALSE),
+  ImportantCentered = 
+    scale(ImportantFlip, scale=FALSE))
+str(exp3_d)
 ```
 
     ## 'data.frame':    8904 obs. of  17 variables:
@@ -105,19 +124,41 @@ str(d)
 
 # Likeability
 
+Summary statistics:
+
+``` r
+summary(exp3_d$Likeable)
+```
+
+    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    ##   1.000   1.000   2.000   2.271   3.000   7.000
+
+``` r
+summary(exp3_d$LikeableFlip)
+```
+
+    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    ##   1.000   5.000   6.000   5.729   7.000   7.000
+
+``` r
+sd(exp3_d$Likeable)
+```
+
+    ## [1] 1.316101
+
 Does the Likeability rating of the character predict the likelihood of
 *she* as opposed to *he* and *other* responses? The maximal model
 includes all interactions, then random intercepts by item but not by
 participant.
 
 ``` r
-m.likeable <- buildmer(
+exp3_m_lik <- buildmer(
   formula=(She ~ Condition * GenderRatingCentered * 
            LikeableCentered + (1|Participant) + (1|Item)),
-  data=d, family=binomial, 
+  data=exp3_d, family=binomial, 
   direction=c("order"), quiet=TRUE)
 
-summary(m.likeable)
+summary(exp3_m_lik)
 ```
 
     ## Generalized linear mixed model fit by maximum likelihood (Laplace
@@ -127,7 +168,7 @@ summary(m.likeable)
     ##     GenderRatingCentered:Condition + GenderRatingCentered:LikeableCentered +  
     ##     LikeableCentered:Condition + GenderRatingCentered:LikeableCentered:Condition +  
     ##     (1 | Item)
-    ##    Data: d
+    ##    Data: exp3_d
     ## 
     ##      AIC      BIC   logLik deviance df.resid 
     ##   7977.9   8070.1  -3975.9   7951.9     8891 
@@ -202,19 +243,41 @@ summary(m.likeable)
 
 # Accomplishment
 
+Summary statistics:
+
+``` r
+summary(exp3_d$Accomplished)
+```
+
+    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    ##   1.000   1.000   2.000   2.147   3.000   7.000
+
+``` r
+summary(exp3_d$AccomplishedFlip)
+```
+
+    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    ##   1.000   5.000   6.000   5.853   7.000   7.000
+
+``` r
+sd(exp3_d$Accomplished)
+```
+
+    ## [1] 1.27504
+
 Does the Accomplishment rating of the character predict the likelihood
 of *she* as opposed to *he* and *other* responses? The maximal model
 includes all interactions, then random intercepts by item but not by
 participant.
 
 ``` r
-m.accomplished <- buildmer(
+exp3_m_acc <- buildmer(
   formula=(She ~ Condition * GenderRatingCentered * 
-           AccomplishedCentered + (1|Participant) + (1|Item)),
-  data=d, family=binomial, 
+    AccomplishedCentered + (1|Participant) + (1|Item)),
+  data=exp3_d, family=binomial, 
   direction=c("order"), quiet=TRUE)
 
-summary(m.accomplished)
+summary(exp3_m_acc)
 ```
 
     ## Generalized linear mixed model fit by maximum likelihood (Laplace
@@ -224,7 +287,7 @@ summary(m.accomplished)
     ##     GenderRatingCentered:Condition + GenderRatingCentered:AccomplishedCentered +  
     ##     AccomplishedCentered:Condition + GenderRatingCentered:AccomplishedCentered:Condition +  
     ##     (1 | Item)
-    ##    Data: d
+    ##    Data: exp3_d
     ## 
     ##      AIC      BIC   logLik deviance df.resid 
     ##   7975.7   8068.0  -3974.9   7949.7     8891 
@@ -317,19 +380,41 @@ summary(m.accomplished)
 
 # Importance
 
+Summary statistics:
+
+``` r
+summary(exp3_d$Important)
+```
+
+    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    ##   1.000   1.000   2.000   2.585   3.000   7.000
+
+``` r
+summary(exp3_d$ImportantFlip)
+```
+
+    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    ##   1.000   5.000   6.000   5.415   7.000   7.000
+
+``` r
+sd(exp3_d$Important)
+```
+
+    ## [1] 1.366153
+
 Does the Importance rating of the character predict the likelihood of
 *she* as opposed to *he* and *other* responses The maximal model
 includes all interactions, then random intercepts by item but not by
 participant.
 
 ``` r
-m.important <- buildmer(
+exp3_m_imp <- buildmer(
   formula=(She ~ Condition * GenderRatingCentered * 
            ImportantCentered + (1|Participant) + (1|Item)),
-  data=d, family=binomial, 
+  data=exp3_d, family=binomial, 
   direction=c("order"), quiet=TRUE)
 
-summary(m.important)
+summary(exp3_m_imp)
 ```
 
     ## Generalized linear mixed model fit by maximum likelihood (Laplace
@@ -339,7 +424,7 @@ summary(m.important)
     ##     GenderRatingCentered:Condition + GenderRatingCentered:ImportantCentered +  
     ##     Condition:ImportantCentered + GenderRatingCentered:Condition:ImportantCentered +  
     ##     (1 | Item)
-    ##    Data: d
+    ##    Data: exp3_d
     ## 
     ##      AIC      BIC   logLik deviance df.resid 
     ##   7998.6   8090.8  -3986.3   7972.6     8891 

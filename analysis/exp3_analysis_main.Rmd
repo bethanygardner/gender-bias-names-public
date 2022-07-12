@@ -1,12 +1,12 @@
 ---
 title: 'Experiment 3: Main Analyses'
 author: "Bethany Gardner"
-date: "05/05/2022"
+date: "`r Sys.Date()`"
 output:
-  github_document:
+  pdf_document:
     toc: yes
     toc_depth: 3
-  pdf_document:
+  github_document:
     toc: yes
     toc_depth: 3
 editor_options:
@@ -28,13 +28,39 @@ library(knitr)
 
 # Setup
 
-Load data and select columns used in model. See data/exp3_data_about.txt for more details.
+Variable names:
+
+-   Experiment: exp3
+
+-   Type
+
+    -   d = data
+    -   m = model
+    -   est = log odds estimate from model
+    -   OR = odds ratio converted from est
+
+-   Analysis
+
+    -   count =sums of response types
+    -   all = including *other* responses
+    -   noOther = excluding *other* responses
+
+-   Subset
+
+    -   FF = First and Full Name conditions only
+
+    -   Last = Last Name condition only
+
+Load data and select columns used in model. See data/exp3_data_about.txt
+for more details.
 
 ```{r}
-d <- read.csv("../data/exp3_data.csv", stringsAsFactors=TRUE) %>%
+exp3_d <- read.csv("../data/exp3_data.csv", 
+                   stringsAsFactors=TRUE) %>%
   rename("Participant"="SubjID", "Item"="Name") %>%
-  select(Participant, Condition, GenderRating, Item, He, She, Other)
-str(d)
+  select(Participant, Condition, GenderRating, 
+         Item, He, She, Other)
+str(exp3_d)
 ```
 
 Center gender rating for names: Original scale from 1 to 7, with 1 as
@@ -42,7 +68,8 @@ most masculine and 7 as most feminine. Mean-centered with higher still
 as more feminine.
 
 ```{r}
-d %<>% mutate(GenderRatingCentered=scale(d$GenderRating, scale=FALSE))
+exp3_d %<>% mutate(GenderRatingCentered=
+            scale(GenderRating, scale=FALSE))
 ```
 
 Set contrasts for name conditions, now weighted to account for uneven
@@ -53,8 +80,9 @@ First vs Full.
 
 ```{r}
 source("centerfactor.R")
-contrasts(d$Condition) <- centerfactor(d$Condition, c("last","first"))
-contrasts(d$Condition)
+contrasts(exp3_d$Condition) <- centerfactor(
+  exp3_d$Condition, c("last","first"))
+contrasts(exp3_d$Condition)
 ```
 
 # Data Summary
@@ -62,19 +90,20 @@ contrasts(d$Condition)
 Responses by condition.
 
 ```{r}
-d %<>% mutate(ResponseAll=case_when(
-       He==1 ~ "He",
-       She==1 ~ "She", 
-       Other==1 ~ "Other"))
+exp3_d %<>% mutate(ResponseAll=case_when(
+  He==1 ~ "He",
+  She==1 ~ "She", 
+  Other==1 ~ "Other"))
 
-d.count_responses <- d %>% group_by(Condition, ResponseAll) %>%
+exp3_d_count <- exp3_d %>% 
+  group_by(Condition, ResponseAll) %>%
   summarise(n=n()) %>%
   pivot_wider(names_from=ResponseAll,
               values_from=n) %>%
   mutate(She_HeOther = She / (He+Other),
          She_He = She / He)
 
-kable(d.count_responses, digits=3)
+kable(exp3_d_count, digits=3)
 ```
 
 # Model 1: With *Other* Responses
@@ -95,11 +124,11 @@ Condition1 is the contrast between last and first+full. Condition2 is
 the contrast between first and full.
 
 ```{r}
-m.all <- glmer(She ~ Condition * GenderRatingCentered + 
-                (1|Participant) + (1|Item), 
-                data=d, family=binomial)
-m.all_tidy <- tidy(m.all)
-summary(m.all)
+exp3_m_all <- glmer(
+  She ~ Condition * GenderRatingCentered + 
+    (1|Participant) + (1|Item), 
+  data=exp3_d, family=binomial)
+summary(exp3_m_all)
 ```
 
 -   Fewer *she* responses overall
@@ -112,91 +141,115 @@ summary(m.all)
     than in Last Name conditions, which makes sense because there are 4
     repetitions of the gendered first name, as opposed to only 1.
 
-## Convert to Odds Ratios
-
-**Intercept**
+## Odds Ratios: Intercept
 
 ```{r}
-m.all_intercept <- m.all_tidy %>% filter(term=="(Intercept)") %>%
+exp3_est_all_intercept <- exp3_m_all %>% 
+  tidy() %>%
+  filter(term=="(Intercept)") %>%
   select(estimate) %>% as.numeric()
 
-exp(m.all_intercept)
-exp(-m.all_intercept)
+exp(exp3_est_all_intercept)
+exp(-exp3_est_all_intercept)
+
+#Save this for the table comparing all 4 experiments
+exp3_OR_all_I <- exp(-exp3_est_all_intercept) %>% round(2)
 ```
 
 0.22x less likely to use *she* overall. Easier to interpret: 4.59x more
-likely to use *he* and *other* overall.
+likely to use *he* and *other* overall, p\<.001
 
-**Condition: Last vs First+Full**
+## Odds Ratios: Last vs First+Full
 
 ```{r}
-m.all_LFF <- m.all_tidy %>% 
+exp3_est_all_LFF <- exp3_m_all %>% 
+  tidy() %>%
   filter(term=="Condition1") %>%
   select(estimate) %>% as.numeric()
-exp(m.all_LFF)
+exp(exp3_est_all_LFF)
 
+#Save this for the table comparing all 4 experiments
+exp3_OR_all_LFF <- exp(exp3_est_all_LFF) %>% round(2)
 ```
 
-1.17x more likely to use *she* than *he* and *other* in First + Full compared to Last. (n.s.)
+1.17x more likely to use *she* than *he* and *other* in First + Full
+compared to Last, 0.09
 
-**Condition: Last Only**
+## Odds Ratios: Last Only
 
 Dummy code with Last Name as 0, so that intercept is the Last Name
 condition only.
 
 ```{r}
-d %<>% mutate(Condition_Last=case_when(
+exp3_d %<>% mutate(Condition_Last=case_when(
   Condition=="first" ~ 1,
   Condition=="full" ~ 1,
   Condition=="last" ~ 0))
-d$Condition_Last %<>% as.factor()
+exp3_d$Condition_Last %<>% as.factor()
 ```
 
 ```{r}
-m.all_last <- glmer(She ~ Condition_Last + (1|Participant) + (1|Item), 
-          data=d, family=binomial)
-m.all_last_tidy <- tidy(m.all_last)
+exp3_m_all_L <- glmer(
+  She ~ Condition_Last + (1|Participant) + (1|Item), 
+  data=exp3_d, family=binomial)
+summary(exp3_m_all_L)
 ```
 
 ```{r}
-m.all_lastonly <- m.all_last_tidy %>% 
+exp3_est_all_L <- exp3_m_all_L %>%
+  tidy() %>%
   filter(term=="(Intercept)") %>%
   select(estimate) %>% as.numeric()
 
-exp(m.all_lastonly)
-exp(-m.all_lastonly)
+exp(exp3_est_all_L)
+exp(-exp3_est_all_L)
+
+#Save this for the table comparing all 4 experiments
+exp3_OR_all_L <- exp(-exp3_est_all_L) %>% 
+  round(2)
 ```
 
-0.18x times less likely to use *she* than *he* and *other* in the Last Name condition -->
-5.72x more likely to use *he* and *other* in the Last Name condition.
+0.18x times less likely to use *she* than *he* and *other* in the Last
+Name condition --\> 5.72x more likely to use *he* and *other* in the
+Last Name condition, p\<.001
 
-**Condition: First and Full Only**
+## Odds Ratios: First and Full Only
 
-Dummy code with First and Full Name as 0, so the intercept is the combination of those two.
+Dummy code with First and Full Name as 0, so the intercept is the
+combination of those two.
 
 ```{r}
-d %<>% mutate(Condition_FF=case_when(
+exp3_d %<>% mutate(Condition_FF=case_when(
   Condition=="first" ~ 0,
   Condition=="full" ~ 0,
   Condition=="last" ~ 1))
-d$Condition_FF %<>% as.factor()
+exp3_d$Condition_FF %<>% as.factor()
 ```
 
 ```{r}
-m.all_FF <- glmer(She ~ Condition_FF + (1|Participant) + (1|Item), 
-          data=d, family=binomial)
-m.all_FF_tidy <- tidy(m.all_FF)
+exp3_m_all_FF <- glmer(
+  She ~ Condition_FF + (1|Participant) + (1|Item), 
+  data=exp3_d, family=binomial)
+summary(exp3_m_all_FF)
 ```
 
 ```{r}
-m.all_FFonly <- m.all_FF_tidy %>% 
+exp3_est_all_FF <- exp3_m_all_FF %>%
+  tidy() %>%
   filter(term=="(Intercept)") %>%
   select(estimate) %>% as.numeric()
 
-exp(m.all_FFonly)
-exp(-m.all_FFonly)
+exp(exp3_est_all_FF)
+exp(-exp3_est_all_FF)
+
+#Save this for the table comparing all 4 experiments
+exp3_OR_all_FF <- exp(-exp3_est_all_FF) %>% 
+  round(2)
 ```
-0.22x times less likely to use *she* than *he* and *other* in the First and Full Name conditions --> 4.46x more likely to use *he* and *other* in the First and Full Name conditions.
+
+0.22x times less likely to use *she* than *he* and *other* in the First
+and Full Name conditions --\> 4.46x more likely to use *he* and *other*
+in the First and Full Name conditions, p\<.001
 
 # Model 2: Without *Other* Responses
 
@@ -205,24 +258,23 @@ in Experiment 1. So, we get a much higher proportion of *other*
 responses (31% vs 7%), which I didn't anticipate.
 
 ```{r}
-o <- sum(d$Other) 
-o
-o/length(d$Other) 
+sum(exp3_d$Other) 
+sum(exp3_d$Other)/length(exp3_d$Other) 
 ```
 
 ```{r}
-d.noOther <- d %>% filter(Other==0)
+exp3_d_noOther <- exp3_d %>% filter(Other==0)
 ```
 
 So, rerun the main model predicting the likelihood of *she* responses vs
 *he* responses, with *other* responses excluded.
 
 ```{r}
-m.noOther <- glmer(She ~ Condition * GenderRatingCentered + 
-                  (1|Participant) + (1|Item), 
-             data=d.noOther, family=binomial)
-m.noOther_tidy <- tidy(m.noOther)
-summary(m.noOther)
+exp3_m_noOther <- glmer(
+  She ~ Condition * GenderRatingCentered + 
+    (1|Participant) + (1|Item), 
+  data=exp3_d_noOther, family=binomial)
+summary(exp3_m_noOther)
 ```
 
 These results are more similar to what we predicted from the previous
@@ -241,86 +293,108 @@ experiments:
 But, to keep the analyses consistent between experiments and avoid
 post-hoc decision weirdness, both versions are reported.
 
-## Convert to Odds Ratios
-
-**Intercept**
+## Odds Ratios: Intercept
 
 ```{r}
-m.noOther_intercept <- m.noOther_tidy %>% 
+exp3_est_noOther_intercept <- exp3_m_noOther %>% 
+  tidy() %>%
   filter(term=="(Intercept)") %>%
   select(estimate) %>% as.numeric()
 
-exp(m.noOther_intercept)
-exp(-m.noOther_intercept)
+exp(exp3_est_noOther_intercept)
+exp(-exp3_est_noOther_intercept)
+
+#Save this for the table comparing all 4 experiments
+exp3_OR_noOther_I <- exp(-exp3_est_noOther_intercept) %>% 
+  round(2)
 ```
 
-0.65x less likely to use *she* than *he* overall. Easier to interpret: 1.53x more likely to use *he* than *she* overall.
+0.65x less likely to use *she* than *he* overall. Easier to interpret:
+1.53x more likely to use *he* than *she* overall, p\<.001
 
-**Condition: Last vs First+Full**
+## Odds Ratios: Last vs First+Full
 
 ```{r}
-m.noOther_LFF <- m.noOther_tidy %>% 
+exp3_est_noOther_LFF <- exp3_m_noOther %>% 
+  tidy() %>%
   filter(term=="Condition1") %>%
   select(estimate) %>% as.numeric()
-exp(m.noOther_LFF)
+exp(exp3_est_noOther_LFF)
+
+
+#Save this for the table comparing all 4 experiments
+exp3_OR_noOther_LFF <- exp(-exp3_est_noOther_LFF) %>% 
+  round(2)
 ```
 
-1.29x more likely to use *she* than *he* in First+Full than in Last --> 1.29x more likely to use *he* than *she* in Last than in First+Full.
+1.29x more likely to use *she* than *he* in First+Full than in Last --\>
+1.29x more likely to use *he* than *she* in Last than in First+Full,
+p\<.001
 
-**Condition: Last Only**
+## Odds Ratios: Last Only
 
-Dummy code with Last Name as 0, so that intercept is the Last Name condition only.
+Dummy code with Last Name as 0, so that intercept is the Last Name
+condition only.
 
 ```{r}
-d.noOther %<>% mutate(Condition_Last=case_when(
+exp3_d_noOther %<>% mutate(Condition_Last=case_when(
   Condition=="first" ~ 1,
   Condition=="full" ~ 1,
   Condition=="last" ~ 0))
-d.noOther$Condition_Last %<>% as.factor()
+exp3_d_noOther$Condition_Last %<>% as.factor()
 ```
 
 ```{r}
-m.noOther_last <- glmer(She ~ Condition_Last + (1|Participant) + (1|Item), 
-          data=d.noOther, family=binomial)
-m.noOther_last_tidy <- tidy(m.noOther_last)
+exp3_m_noOther_L <- glmer(
+  She ~ Condition_Last + (1|Participant) + (1|Item), 
+  data=exp3_d_noOther, family=binomial)
+summary(exp3_m_noOther_L)
 ```
 
 ```{r}
-m.noOther_lastonly <- m.noOther_last_tidy %>% 
+exp3_est_noOther_L <- exp3_m_noOther_L %>%
+  tidy() %>%
   filter(term=="(Intercept)") %>%
   select(estimate) %>% as.numeric()
 
-exp(m.noOther_lastonly)
-exp(-m.noOther_lastonly)
+exp(exp3_est_noOther_L)
+exp(-exp3_est_noOther_L)
+
+#Save this for the table comparing all 4 experiments
+exp3_OR_noOther_L <- exp(-exp3_est_noOther_L) %>% 
+  round(2)
 ```
 
-0.51x times less likely to use *she* than *he* in the Last Name condition -->
-1.97x more likely to use *he* than *she* in the Last Name condition (n.s.)
+0.51x times less likely to use *she* than *he* in the Last Name
+condition --\> 1.97x more likely to use *he* than *she* in the Last Name
+condition, p=.10
 
-**Condition: First and Full Only**
+## Odds Ratios: First and Full Only
 
-Dummy code with First and Full Name as 0, so the intercept is the combination of those two.
+Dummy code with First and Full Name as 0, so the intercept is the
+combination of those two.
 
 ```{r}
-d.noOther %<>% mutate(Condition_FF=case_when(
-  Condition=="first" ~ 0,
-  Condition=="full" ~ 0,
-  Condition=="last" ~ 1))
-d.noOther$Condition_FF %<>% as.factor()
+exp3_m_noOther_FF <- glmer(
+  She ~ Condition_FF + (1|Participant) + (1|Item), 
+  data=exp3_d_noOther, family=binomial)
+summary(exp3_m_noOther_FF)
 ```
 
 ```{r}
-m.noOther_FF <- glmer(She ~ Condition_FF + (1|Participant) + (1|Item), 
-          data=d.noOther, family=binomial)
-m.noOther_FF_tidy <- tidy(m.noOther_FF)
-```
-
-```{r}
-m.noOther_FFonly <- m.noOther_FF_tidy %>% 
+exp3_est_noOther_FF <- exp3_m_noOther_FF %>%
+  tidy() %>%
   filter(term=="(Intercept)") %>%
   select(estimate) %>% as.numeric()
 
-exp(m.noOther_FFonly)
-exp(-m.noOther_FFonly)
+exp(exp3_est_noOther_FF)
+exp(-exp3_est_noOther_FF)
+
+#Save this for the table comparing all 4 experiments
+exp3_OR_noOther_FF <- exp(-exp3_est_noOther_FF) %>% 
+  round(2)
 ```
-0.74x times less likely to use *she* than *he* and *other* in the First and Full Name conditions --> 1.35x more likely to use *he* and *other* in the First and Full Name conditions.
+
+0.74x times less likely to use *she* than *he* and *other* in the First
+and Full Name conditions --\> 1.35x more likely to use *he* and *other*
+in the First and Full Name conditions, p=.46

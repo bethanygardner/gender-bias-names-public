@@ -1,7 +1,7 @@
 Experiment 4: Ratings Analyses
 ================
 Bethany Gardner
-4/07/2022
+2022-07-07
 
 -   [Setup](#setup)
 -   [Likeability](#likeability)
@@ -10,16 +10,31 @@ Bethany Gardner
 
 # Setup
 
-Load data and select columns used in model. See data/exp4_data_about.txt
-for more details.
+-   Variable names:
+
+    -   Experiment: exp4
+
+    -   Type
+
+        -   d = data
+        -   m = model
+        -   est = log odds estimate from model
+        -   OR = odds ratio converted from est
+
+    -   Analysis
+
+        -   Lik = likability ratings
+        -   Acc = accomplishment ratings
+        -   Imp = importance ratings
 
 ``` r
-d <- read.csv("../data/exp4_data.csv", stringsAsFactors=TRUE) %>%
+exp4_d <- read.csv("../data/exp4_data.csv", 
+                   stringsAsFactors=TRUE) %>%
   rename("Participant"="SubjID", "Item"="Name") %>%
   select(Participant, Condition, 
          GenderRating, Item, Male, Female, Other,
          Likeable, Accomplished, Important)
-str(d)
+str(exp4_d)
 ```
 
     ## 'data.frame':    8771 obs. of  10 variables:
@@ -39,7 +54,8 @@ most masculine and 7 as most feminine. Mean-centered with higher still
 as more feminine.
 
 ``` r
-d %<>% mutate(GenderRatingCentered=scale(GenderRating, scale=FALSE))
+exp4_d %<>% mutate(GenderRatingCentered=
+                     scale(GenderRating, scale=FALSE))
 ```
 
 Set contrasts for name conditions, now weighted to account for uneven
@@ -50,8 +66,9 @@ First vs Full.
 
 ``` r
 source("centerfactor.R")
-contrasts(d$Condition) <- centerfactor(d$Condition, c("last","first"))
-contrasts(d$Condition)
+contrasts(exp4_d$Condition) <- centerfactor(
+  exp4_d$Condition, c("last","first"))
+contrasts(exp4_d$Condition)
 ```
 
     ##             [,1]         [,2]
@@ -63,18 +80,21 @@ Flip ratings from 1=most likeable/accomplished/important to 7=most
 L/A/I, to make interpreting models easier, then mean-center.
 
 ``` r
-d %<>% mutate(
+exp4_d %<>% mutate(
   LikeableFlip = recode(Likeable, 
       '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
   AccomplishedFlip = recode(Accomplished,
       '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
   ImportantFlip = recode(Important,
       '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
-  LikeableCentered = scale(LikeableFlip, scale=FALSE),
-  AccomplishedCentered = scale(AccomplishedFlip, scale=FALSE),
-  ImportantCentered = scale(ImportantFlip, scale=FALSE))
+  LikeableCentered = scale(
+    LikeableFlip, scale=FALSE),
+  AccomplishedCentered = scale(
+    AccomplishedFlip, scale=FALSE),
+  ImportantCentered = scale(
+    ImportantFlip, scale=FALSE))
 
-str(d)
+str(exp4_d)
 ```
 
     ## 'data.frame':    8771 obs. of  17 variables:
@@ -109,21 +129,21 @@ str(d)
 Summary statistics:
 
 ``` r
-summary(d$Likeable)
+summary(exp4_d$Likeable)
 ```
 
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     ##   1.000   1.000   2.000   2.561   3.000   7.000
 
 ``` r
-summary(d$LikeableFlip)
+summary(exp4_d$LikeableFlip)
 ```
 
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     ##   1.000   5.000   6.000   5.439   7.000   7.000
 
 ``` r
-sd(d$Likeable)
+sd(exp4_d$Likeable)
 ```
 
     ## [1] 1.392179
@@ -134,132 +154,13 @@ maximal model includes random intercepts by item, but not by
 participant.
 
 ``` r
-m.likeable <- buildmer(
+exp4_m_lik <- buildmer(
   formula=(Female ~ Condition * GenderRatingCentered * 
            LikeableCentered + (1|Participant) + (1|Item)),
-  data=d, family=binomial, direction=c("order"))
-```
+  data=exp4_d, family=binomial, 
+  direction=c("order"), quiet=TRUE)
 
-    ## Determining predictor order
-
-    ## Fitting via glm: Female ~ 1
-
-    ## Currently evaluating LRT for: Condition, GenderRatingCentered,
-    ##     LikeableCentered
-
-    ## Fitting via glm: Female ~ 1 + Condition
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered
-
-    ## Fitting via glm: Female ~ 1 + LikeableCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered
-
-    ## Currently evaluating LRT for: Condition, LikeableCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + Condition
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + LikeableCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered + LikeableCentered
-
-    ## Currently evaluating LRT for: Condition,
-    ##     GenderRatingCentered:LikeableCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + LikeableCentered +
-    ##     Condition
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + LikeableCentered +
-    ##     GenderRatingCentered:LikeableCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered + LikeableCentered
-    ##     + GenderRatingCentered:LikeableCentered
-
-    ## Currently evaluating LRT for: Condition
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + LikeableCentered +
-    ##     GenderRatingCentered:LikeableCentered + Condition
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered + LikeableCentered
-    ##     + GenderRatingCentered:LikeableCentered + Condition
-
-    ## Currently evaluating LRT for: Condition:GenderRatingCentered,
-    ##     Condition:LikeableCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + LikeableCentered +
-    ##     GenderRatingCentered:LikeableCentered + Condition +
-    ##     Condition:GenderRatingCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + LikeableCentered +
-    ##     GenderRatingCentered:LikeableCentered + Condition +
-    ##     Condition:LikeableCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered + LikeableCentered
-    ##     + GenderRatingCentered:LikeableCentered + Condition +
-    ##     Condition:GenderRatingCentered
-
-    ## Currently evaluating LRT for: Condition:LikeableCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + LikeableCentered +
-    ##     GenderRatingCentered:LikeableCentered + Condition +
-    ##     GenderRatingCentered:Condition + Condition:LikeableCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered + LikeableCentered
-    ##     + GenderRatingCentered:LikeableCentered + Condition +
-    ##     GenderRatingCentered:Condition + Condition:LikeableCentered
-
-    ## Currently evaluating LRT for:
-    ##     Condition:GenderRatingCentered:LikeableCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + LikeableCentered +
-    ##     GenderRatingCentered:LikeableCentered + Condition +
-    ##     GenderRatingCentered:Condition + LikeableCentered:Condition +
-    ##     Condition:GenderRatingCentered:LikeableCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered + LikeableCentered
-    ##     + GenderRatingCentered:LikeableCentered + Condition +
-    ##     GenderRatingCentered:Condition + LikeableCentered:Condition +
-    ##     Condition:GenderRatingCentered:LikeableCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + LikeableCentered +
-    ##     GenderRatingCentered:LikeableCentered + Condition +
-    ##     GenderRatingCentered:Condition + LikeableCentered:Condition +
-    ##     Condition:GenderRatingCentered:LikeableCentered
-
-    ## Currently evaluating LRT for: 1 | Item, 1 | Participant
-
-    ## Fitting via glmer, with ML: Female ~ 1 + GenderRatingCentered +
-    ##     LikeableCentered + GenderRatingCentered:LikeableCentered +
-    ##     Condition + GenderRatingCentered:Condition +
-    ##     LikeableCentered:Condition +
-    ##     GenderRatingCentered:LikeableCentered:Condition + (1 | Item)
-
-    ## Fitting via glmer, with ML: Female ~ 1 + GenderRatingCentered +
-    ##     LikeableCentered + GenderRatingCentered:LikeableCentered +
-    ##     Condition + GenderRatingCentered:Condition +
-    ##     LikeableCentered:Condition +
-    ##     GenderRatingCentered:LikeableCentered:Condition + (1 | Participant)
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered + LikeableCentered
-    ##     + GenderRatingCentered:LikeableCentered + Condition +
-    ##     GenderRatingCentered:Condition + LikeableCentered:Condition +
-    ##     GenderRatingCentered:LikeableCentered:Condition + (1 | Item)
-
-    ## Currently evaluating LRT for: 1 | Participant
-
-    ## Fitting via glmer, with ML: Female ~ 1 + GenderRatingCentered +
-    ##     LikeableCentered + GenderRatingCentered:LikeableCentered +
-    ##     Condition + GenderRatingCentered:Condition +
-    ##     LikeableCentered:Condition +
-    ##     GenderRatingCentered:LikeableCentered:Condition + (1 | Item) + (1 |
-    ##     Participant)
-
-    ## Ending the ordering procedure due to having reached the maximal
-    ##     feasible model - all higher models failed to converge. The types of
-    ##     convergence failure are: lme4 reports not having converged (-1)
-
-``` r
-summary(m.likeable)
+summary(exp4_m_lik)
 ```
 
     ## Generalized linear mixed model fit by maximum likelihood (Laplace
@@ -269,7 +170,7 @@ summary(m.likeable)
     ## Female ~ 1 + GenderRatingCentered + LikeableCentered + GenderRatingCentered:LikeableCentered +  
     ##     Condition + GenderRatingCentered:Condition + LikeableCentered:Condition +  
     ##     GenderRatingCentered:LikeableCentered:Condition + (1 | Item)
-    ##    Data: d
+    ##    Data: exp4_d
     ## 
     ##      AIC      BIC   logLik deviance df.resid 
     ##   9066.8   9158.8  -4520.4   9040.8     8758 
@@ -354,21 +255,21 @@ summary(m.likeable)
 Summary statistics:
 
 ``` r
-summary(d$Accomplished)
+summary(exp4_d$Accomplished)
 ```
 
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     ##   1.000   1.000   2.000   2.446   3.000   7.000
 
 ``` r
-summary(d$AccomplishedFlip)
+summary(exp4_d$AccomplishedFlip)
 ```
 
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     ##   1.000   5.000   6.000   5.554   7.000   7.000
 
 ``` r
-sd(d$Accomplished)
+sd(exp4_d$Accomplished)
 ```
 
     ## [1] 1.371271
@@ -379,143 +280,13 @@ maximal model includes random intercepts by item, but not by
 participant.
 
 ``` r
-m.accomplished <- buildmer(
+exp4_m_acc <- buildmer(
   formula=(Female ~ Condition * GenderRatingCentered * 
-           AccomplishedCentered + (1|Participant) + (1|Item)),
-  data=d, family=binomial, direction=c("order"))
-```
+    AccomplishedCentered + (1|Participant) + (1|Item)),
+  data=exp4_d, family=binomial, 
+  direction=c("order"), quiet=TRUE)
 
-    ## Determining predictor order
-
-    ## Fitting via glm: Female ~ 1
-
-    ## Currently evaluating LRT for: AccomplishedCentered, Condition,
-    ##     GenderRatingCentered
-
-    ## Fitting via glm: Female ~ 1 + AccomplishedCentered
-
-    ## Fitting via glm: Female ~ 1 + Condition
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered
-
-    ## Currently evaluating LRT for: AccomplishedCentered, Condition
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + Condition
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered
-
-    ## Currently evaluating LRT for: Condition,
-    ##     GenderRatingCentered:AccomplishedCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + Condition
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered
-
-    ## Currently evaluating LRT for: Condition
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered +
-    ##     Condition
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered +
-    ##     Condition
-
-    ## Currently evaluating LRT for: Condition:AccomplishedCentered,
-    ##     Condition:GenderRatingCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered +
-    ##     Condition + Condition:AccomplishedCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered +
-    ##     Condition + Condition:GenderRatingCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered +
-    ##     Condition + Condition:GenderRatingCentered
-
-    ## Currently evaluating LRT for: Condition:AccomplishedCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered +
-    ##     Condition + GenderRatingCentered:Condition +
-    ##     Condition:AccomplishedCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered +
-    ##     Condition + GenderRatingCentered:Condition +
-    ##     Condition:AccomplishedCentered
-
-    ## Currently evaluating LRT for:
-    ##     Condition:GenderRatingCentered:AccomplishedCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered +
-    ##     Condition + GenderRatingCentered:Condition +
-    ##     AccomplishedCentered:Condition +
-    ##     Condition:GenderRatingCentered:AccomplishedCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered +
-    ##     Condition + GenderRatingCentered:Condition +
-    ##     AccomplishedCentered:Condition +
-    ##     Condition:GenderRatingCentered:AccomplishedCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered +
-    ##     Condition + GenderRatingCentered:Condition +
-    ##     AccomplishedCentered:Condition +
-    ##     Condition:GenderRatingCentered:AccomplishedCentered
-
-    ## Currently evaluating LRT for: 1 | Item, 1 | Participant
-
-    ## Fitting via glmer, with ML: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered +
-    ##     Condition + GenderRatingCentered:Condition +
-    ##     AccomplishedCentered:Condition +
-    ##     GenderRatingCentered:AccomplishedCentered:Condition + (1 | Item)
-
-    ## Fitting via glmer, with ML: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered +
-    ##     Condition + GenderRatingCentered:Condition +
-    ##     AccomplishedCentered:Condition +
-    ##     GenderRatingCentered:AccomplishedCentered:Condition + (1 |
-    ##     Participant)
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered +
-    ##     Condition + GenderRatingCentered:Condition +
-    ##     AccomplishedCentered:Condition +
-    ##     GenderRatingCentered:AccomplishedCentered:Condition + (1 | Item)
-
-    ## Currently evaluating LRT for: 1 | Participant
-
-    ## Fitting via glmer, with ML: Female ~ 1 + GenderRatingCentered +
-    ##     AccomplishedCentered + GenderRatingCentered:AccomplishedCentered +
-    ##     Condition + GenderRatingCentered:Condition +
-    ##     AccomplishedCentered:Condition +
-    ##     GenderRatingCentered:AccomplishedCentered:Condition + (1 | Item) +
-    ##     (1 | Participant)
-
-    ## Ending the ordering procedure due to having reached the maximal
-    ##     feasible model - all higher models failed to converge. The types of
-    ##     convergence failure are: lme4 reports not having converged (-1)
-
-``` r
-summary(m.accomplished)
+summary(exp4_m_acc)
 ```
 
     ## Generalized linear mixed model fit by maximum likelihood (Laplace
@@ -525,7 +296,7 @@ summary(m.accomplished)
     ## Female ~ 1 + GenderRatingCentered + AccomplishedCentered + GenderRatingCentered:AccomplishedCentered +  
     ##     Condition + GenderRatingCentered:Condition + AccomplishedCentered:Condition +  
     ##     GenderRatingCentered:AccomplishedCentered:Condition + (1 |      Item)
-    ##    Data: d
+    ##    Data: exp4_d
     ## 
     ##      AIC      BIC   logLik deviance df.resid 
     ##   9082.2   9174.2  -4528.1   9056.2     8758 
@@ -623,21 +394,21 @@ summary(m.accomplished)
 Summary statistics:
 
 ``` r
-summary(d$Important)
+summary(exp4_d$Important)
 ```
 
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     ##   1.000   2.000   3.000   2.849   4.000   7.000
 
 ``` r
-summary(d$ImportantFlip)
+summary(exp4_d$ImportantFlip)
 ```
 
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     ##   1.000   4.000   5.000   5.151   6.000   7.000
 
 ``` r
-sd(d$Important)
+sd(exp4_d$Important)
 ```
 
     ## [1] 1.461433
@@ -648,142 +419,13 @@ maximal model includes random intercepts by item, but not by
 participant.
 
 ``` r
-m.important <- buildmer(
+exp4_m_imp <- buildmer(
   formula=(Female ~ Condition * GenderRatingCentered * 
            ImportantCentered + (1|Participant) + (1|Item)),
-  data=d, family=binomial, direction=c("order"))
-```
+  data=exp4_d, family=binomial, 
+  direction=c("order"), quiet=TRUE)
 
-    ## Determining predictor order
-
-    ## Fitting via glm: Female ~ 1
-
-    ## Currently evaluating LRT for: Condition, GenderRatingCentered,
-    ##     ImportantCentered
-
-    ## Fitting via glm: Female ~ 1 + Condition
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered
-
-    ## Fitting via glm: Female ~ 1 + ImportantCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered
-
-    ## Currently evaluating LRT for: Condition, ImportantCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + Condition
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + ImportantCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered + Condition
-
-    ## Currently evaluating LRT for: Condition:GenderRatingCentered,
-    ##     ImportantCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + Condition +
-    ##     Condition:GenderRatingCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + Condition +
-    ##     ImportantCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered + Condition +
-    ##     Condition:GenderRatingCentered
-
-    ## Currently evaluating LRT for: ImportantCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + Condition +
-    ##     GenderRatingCentered:Condition + ImportantCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered + Condition +
-    ##     GenderRatingCentered:Condition + ImportantCentered
-
-    ## Currently evaluating LRT for: Condition:ImportantCentered,
-    ##     GenderRatingCentered:ImportantCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + Condition +
-    ##     GenderRatingCentered:Condition + ImportantCentered +
-    ##     Condition:ImportantCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + Condition +
-    ##     GenderRatingCentered:Condition + ImportantCentered +
-    ##     GenderRatingCentered:ImportantCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered + Condition +
-    ##     GenderRatingCentered:Condition + ImportantCentered +
-    ##     GenderRatingCentered:ImportantCentered
-
-    ## Currently evaluating LRT for: Condition:ImportantCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + Condition +
-    ##     GenderRatingCentered:Condition + ImportantCentered +
-    ##     GenderRatingCentered:ImportantCentered +
-    ##     Condition:ImportantCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered + Condition +
-    ##     GenderRatingCentered:Condition + ImportantCentered +
-    ##     GenderRatingCentered:ImportantCentered +
-    ##     Condition:ImportantCentered
-
-    ## Currently evaluating LRT for:
-    ##     Condition:GenderRatingCentered:ImportantCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + Condition +
-    ##     GenderRatingCentered:Condition + ImportantCentered +
-    ##     GenderRatingCentered:ImportantCentered +
-    ##     Condition:ImportantCentered +
-    ##     Condition:GenderRatingCentered:ImportantCentered
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered + Condition +
-    ##     GenderRatingCentered:Condition + ImportantCentered +
-    ##     GenderRatingCentered:ImportantCentered +
-    ##     Condition:ImportantCentered +
-    ##     Condition:GenderRatingCentered:ImportantCentered
-
-    ## Fitting via glm: Female ~ 1 + GenderRatingCentered + Condition +
-    ##     GenderRatingCentered:Condition + ImportantCentered +
-    ##     GenderRatingCentered:ImportantCentered +
-    ##     Condition:ImportantCentered +
-    ##     Condition:GenderRatingCentered:ImportantCentered
-
-    ## Currently evaluating LRT for: 1 | Item, 1 | Participant
-
-    ## Fitting via glmer, with ML: Female ~ 1 + GenderRatingCentered +
-    ##     Condition + GenderRatingCentered:Condition + ImportantCentered +
-    ##     GenderRatingCentered:ImportantCentered +
-    ##     Condition:ImportantCentered +
-    ##     GenderRatingCentered:Condition:ImportantCentered + (1 | Item)
-
-    ## Fitting via glmer, with ML: Female ~ 1 + GenderRatingCentered +
-    ##     Condition + GenderRatingCentered:Condition + ImportantCentered +
-    ##     GenderRatingCentered:ImportantCentered +
-    ##     Condition:ImportantCentered +
-    ##     GenderRatingCentered:Condition:ImportantCentered + (1 |
-    ##     Participant)
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered + Condition +
-    ##     GenderRatingCentered:Condition + ImportantCentered +
-    ##     GenderRatingCentered:ImportantCentered +
-    ##     Condition:ImportantCentered +
-    ##     GenderRatingCentered:Condition:ImportantCentered + (1 | Item)
-
-    ## Currently evaluating LRT for: 1 | Participant
-
-    ## Fitting via glmer, with ML: Female ~ 1 + GenderRatingCentered +
-    ##     Condition + GenderRatingCentered:Condition + ImportantCentered +
-    ##     GenderRatingCentered:ImportantCentered +
-    ##     Condition:ImportantCentered +
-    ##     GenderRatingCentered:Condition:ImportantCentered + (1 | Item) + (1
-    ##     | Participant)
-
-    ## Updating formula: Female ~ 1 + GenderRatingCentered + Condition +
-    ##     GenderRatingCentered:Condition + ImportantCentered +
-    ##     GenderRatingCentered:ImportantCentered +
-    ##     Condition:ImportantCentered +
-    ##     GenderRatingCentered:Condition:ImportantCentered + (1 | Item) + (1
-    ##     | Participant)
-
-``` r
-summary(m.important)
+summary(exp4_m_imp)
 ```
 
     ## Generalized linear mixed model fit by maximum likelihood (Laplace
@@ -794,7 +436,7 @@ summary(m.important)
     ##     ImportantCentered + GenderRatingCentered:ImportantCentered +  
     ##     Condition:ImportantCentered + GenderRatingCentered:Condition:ImportantCentered +  
     ##     (1 | Item) + (1 | Participant)
-    ##    Data: d
+    ##    Data: exp4_d
     ## 
     ##      AIC      BIC   logLik deviance df.resid 
     ##   9110.1   9209.2  -4541.1   9082.1     8757 

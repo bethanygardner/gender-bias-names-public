@@ -1,12 +1,12 @@
 ---
 title: 'Experiment 4: Ratings Analyses'
 author: "Bethany Gardner"
-date: "4/07/2022"
+date: "`r Sys.Date()`"
 output: 
-  github_document:
+  pdf_document:
     toc: true
     toc_depth: 3
-  pdf_document:
+  github_document:
     toc: true
     toc_depth: 3
 editor_options: 
@@ -27,16 +27,31 @@ library(kableExtra)
 
 # Setup
 
-Load data and select columns used in model. See data/exp4_data_about.txt
-for more details.
+-   Variable names:
+
+    -   Experiment: exp4
+
+    -   Type
+
+        -   d = data
+        -   m = model
+        -   est = log odds estimate from model
+        -   OR = odds ratio converted from est
+
+    -   Analysis
+
+        -   Lik = likability ratings
+        -   Acc = accomplishment ratings
+        -   Imp = importance ratings
 
 ```{r}
-d <- read.csv("../data/exp4_data.csv", stringsAsFactors=TRUE) %>%
+exp4_d <- read.csv("../data/exp4_data.csv", 
+                   stringsAsFactors=TRUE) %>%
   rename("Participant"="SubjID", "Item"="Name") %>%
   select(Participant, Condition, 
          GenderRating, Item, Male, Female, Other,
          Likeable, Accomplished, Important)
-str(d)
+str(exp4_d)
 ```
 
 Center gender rating for names: Original scale from 1 to 7, with 1 as
@@ -44,7 +59,8 @@ most masculine and 7 as most feminine. Mean-centered with higher still
 as more feminine.
 
 ```{r}
-d %<>% mutate(GenderRatingCentered=scale(GenderRating, scale=FALSE))
+exp4_d %<>% mutate(GenderRatingCentered=
+                     scale(GenderRating, scale=FALSE))
 ```
 
 Set contrasts for name conditions, now weighted to account for uneven
@@ -55,26 +71,30 @@ First vs Full.
 
 ```{r}
 source("centerfactor.R")
-contrasts(d$Condition) <- centerfactor(d$Condition, c("last","first"))
-contrasts(d$Condition)
+contrasts(exp4_d$Condition) <- centerfactor(
+  exp4_d$Condition, c("last","first"))
+contrasts(exp4_d$Condition)
 ```
 
 Flip ratings from 1=most likeable/accomplished/important to 7=most
 L/A/I, to make interpreting models easier, then mean-center.
 
 ```{r}
-d %<>% mutate(
+exp4_d %<>% mutate(
   LikeableFlip = recode(Likeable, 
       '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
   AccomplishedFlip = recode(Accomplished,
       '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
   ImportantFlip = recode(Important,
       '1'=7, '2'=6, '3'=5, '4'=4, '5'=3, '6'=2, '7'=1),
-  LikeableCentered = scale(LikeableFlip, scale=FALSE),
-  AccomplishedCentered = scale(AccomplishedFlip, scale=FALSE),
-  ImportantCentered = scale(ImportantFlip, scale=FALSE))
+  LikeableCentered = scale(
+    LikeableFlip, scale=FALSE),
+  AccomplishedCentered = scale(
+    AccomplishedFlip, scale=FALSE),
+  ImportantCentered = scale(
+    ImportantFlip, scale=FALSE))
 
-str(d)
+str(exp4_d)
 ```
 
 # Likeability
@@ -82,9 +102,9 @@ str(d)
 Summary statistics:
 
 ```{r}
-summary(d$Likeable)
-summary(d$LikeableFlip)
-sd(d$Likeable)
+summary(exp4_d$Likeable)
+summary(exp4_d$LikeableFlip)
+sd(exp4_d$Likeable)
 ```
 
 Does the Likeability rating of the character predict how likely the
@@ -93,12 +113,13 @@ maximal model includes random intercepts by item, but not by
 participant.
 
 ```{r}
-m.likeable <- buildmer(
+exp4_m_lik <- buildmer(
   formula=(Female ~ Condition * GenderRatingCentered * 
            LikeableCentered + (1|Participant) + (1|Item)),
-  data=d, family=binomial, direction=c("order"))
+  data=exp4_d, family=binomial, 
+  direction=c("order"), quiet=TRUE)
 
-summary(m.likeable)
+summary(exp4_m_lik)
 ```
 
 -   Characters who are rated more Likeable are more likely to be
@@ -116,9 +137,9 @@ summary(m.likeable)
 Summary statistics:
 
 ```{r}
-summary(d$Accomplished)
-summary(d$AccomplishedFlip)
-sd(d$Accomplished)
+summary(exp4_d$Accomplished)
+summary(exp4_d$AccomplishedFlip)
+sd(exp4_d$Accomplished)
 ```
 
 Does the Accomplishment rating of the character predict how likely the
@@ -127,12 +148,13 @@ maximal model includes random intercepts by item, but not by
 participant.
 
 ```{r}
-m.accomplished <- buildmer(
+exp4_m_acc <- buildmer(
   formula=(Female ~ Condition * GenderRatingCentered * 
-           AccomplishedCentered + (1|Participant) + (1|Item)),
-  data=d, family=binomial, direction=c("order"))
+    AccomplishedCentered + (1|Participant) + (1|Item)),
+  data=exp4_d, family=binomial, 
+  direction=c("order"), quiet=TRUE)
 
-summary(m.accomplished)
+summary(exp4_m_acc)
 ```
 
 -   Characters who were rated more Accomplished were more likely to be
@@ -150,9 +172,9 @@ summary(m.accomplished)
 Summary statistics:
 
 ```{r}
-summary(d$Important)
-summary(d$ImportantFlip)
-sd(d$Important)
+summary(exp4_d$Important)
+summary(exp4_d$ImportantFlip)
+sd(exp4_d$Important)
 ```
 
 Does the Importance rating of the character predict how likely the
@@ -161,12 +183,13 @@ maximal model includes random intercepts by item, but not by
 participant.
 
 ```{r}
-m.important <- buildmer(
+exp4_m_imp <- buildmer(
   formula=(Female ~ Condition * GenderRatingCentered * 
            ImportantCentered + (1|Participant) + (1|Item)),
-  data=d, family=binomial, direction=c("order"))
+  data=exp4_d, family=binomial, 
+  direction=c("order"), quiet=TRUE)
 
-summary(m.important)
+summary(exp4_m_imp)
 ```
 
 -   No main effect of Importance like there was for other ratings
